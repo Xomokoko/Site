@@ -10,8 +10,6 @@ const PORT = process.env.PORT || 5000
 app.get('/api/status', (req, res) => {
   res.json({ status: 'ok', name: 'ETUDE' })
 })
-
-// Exemple de données en mémoire
 let sessions = [
   { id: 1, title: 'Révision Math', duration: 50 },
   { id: 2, title: 'Lecture Histoire', duration: 30 }

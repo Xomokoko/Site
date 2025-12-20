@@ -20,7 +20,7 @@ const useNotification = () => {
   }, []);
 
   const notifySessionComplete = useCallback(() => {
-    playSound('/notification.mp3');
+    playSound('/break.mp3');
     
     if ('Notification' in window && Notification.permission === 'granted') {
       new Notification('Session terminée', {
@@ -32,7 +32,7 @@ const useNotification = () => {
   }, [playSound]);
 
   const notifyBreak = useCallback(() => {
-    playSound('/break.mp3');
+    playSound('/notification.mp3');
     
     if ('Notification' in window && Notification.permission === 'granted') {
       new Notification('Pause terminée', {

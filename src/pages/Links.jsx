@@ -1,4 +1,3 @@
-import React from 'react';
 import { ExternalLink, BookOpen, FileText, Globe } from 'lucide-react';
 
 const Links = () => {
