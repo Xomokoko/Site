@@ -207,7 +207,7 @@ const Timer = ({ onSessionComplete }) => {
               Session terminée
             </h3>
             <p className="text-slate-600 dark:text-slate-300 mb-6 text-center">
-              Était-ce une session de travail ou une pause ?
+              Qu'est ce que sera la prochaine session ?
             </p>
 
             <div className="flex gap-4">
