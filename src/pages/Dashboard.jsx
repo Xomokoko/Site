@@ -89,47 +89,6 @@ const Dashboard = () => {
             <div className="animate-slide-up" style={{ animationDelay: '0.2s' }}>
               <Timer onSessionComplete={handleSessionComplete} />
             </div>
-            {showSessionForm && (
-              <div className="card animate-slide-up">
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">
-                      Matière *
-                    </label>
-                    <input
-                      type="text"
-                      value={sessionSubject}
-                      onChange={(e) => setSessionSubject(e.target.value)}
-                      placeholder="Ex: Mathématiques, Informatique..."
-                      className="input-field"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">
-                      Description (optionnel)
-                    </label>
-                    <textarea
-                      value={sessionDescription}
-                      onChange={(e) => setSessionDescription(e.target.value)}
-                      placeholder="Qu'avez-vous étudié ?"
-                      className="input-field min-h-[80px]"
-                    />
-                  </div>
-                  <div className="flex gap-3">
-                    <button onClick={saveSession} className="btn-primary flex-1">
-                      Enregistrer
-                    </button>
-                    <button
-                      onClick={() => setShowSessionForm(false)}
-                      className="btn-secondary"
-                    >
-                      Ignorer
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
             {/* Recent Sessions */}
             {todaySessions.length > 0 && (
               <div className="animate-slide-up" style={{ animationDelay: '0.3s' }}>
