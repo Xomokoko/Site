@@ -17,7 +17,7 @@ const Links = () => {
       title: "Mes liens",
       color: "from-blue-600 to-indigo-600",
       links: [
-        { name: "Système informatique", url: "https://shelled-columnist-614.notion.site/LINFO1123-SYNTHESE-SYST-MES-INFORMATIQUES-a8727ee10a1149ce90df406b7214fccc", icon: BookOpen },
+        
       ]
     },
   ]);
