@@ -251,7 +251,6 @@ const Planning = () => {
                     type="text"
                     value={newSession.subject}
                     onChange={(e) => setNewSession({ ...newSession, subject: e.target.value })}
-                    placeholder="Ex: Mathématiques"
                     className="input-field"
                   />
                 </div>
