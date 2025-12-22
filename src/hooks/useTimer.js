@@ -7,6 +7,7 @@ const useTimer = (initialMinutes = 25, onComplete = null) => {
   const hasRestoredRef = useRef(false);
   const intervalRef = useRef(null);
   const startTimeRef = useRef(null);
+  const hasCalledCompleteRef = useRef(false); // Pour éviter les doublons
 
   // Charger l'état sauvegardé une seule fois
   const loadSavedState = () => {
@@ -85,7 +86,9 @@ const useTimer = (initialMinutes = 25, onComplete = null) => {
         setIsRunning(false);
         setTimeLeft(0);
         const totalElapsed = savedState.elapsedTime + elapsed;
-        if (onCompleteRef.current) {
+        
+        if (onCompleteRef.current && !hasCalledCompleteRef.current) {
+          hasCalledCompleteRef.current = true;
           setTimeout(() => {
             onCompleteRef.current(Math.ceil(totalElapsed / 60));
           }, 100);
@@ -110,6 +113,7 @@ const useTimer = (initialMinutes = 25, onComplete = null) => {
     setIsRunning(true);
     setIsPaused(false);
     startTimeRef.current = Date.now();
+    hasCalledCompleteRef.current = false; // Reset le flag au démarrage
   }, []);
 
   const pause = useCallback(() => {
@@ -148,6 +152,7 @@ const useTimer = (initialMinutes = 25, onComplete = null) => {
     setElapsedTime(0);
     setCurrentInitialMinutes(minutes);
     startTimeRef.current = null;
+    hasCalledCompleteRef.current = false; // Reset le flag
 
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
@@ -184,7 +189,8 @@ const useTimer = (initialMinutes = 25, onComplete = null) => {
             console.log('✅ Timer completed - reporting', minutesWorked, 'minutes');
             startTimeRef.current = null;
 
-            if (onCompleteRef.current) {
+            if (onCompleteRef.current && !hasCalledCompleteRef.current) {
+              hasCalledCompleteRef.current = true;
               setTimeout(() => {
                 onCompleteRef.current(minutesWorked);
               }, 0);

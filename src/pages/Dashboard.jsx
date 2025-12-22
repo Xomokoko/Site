@@ -5,6 +5,7 @@ import StatCard from '../components/StatCard';
 import TodoList from '../components/TodoList';
 import StudySession from '../components/StudySession';
 import useStudyData from '../hooks/useStudyData';
+import { useModal } from '../contexts/ModalContext';
 import { formatDuration } from '../utils/dateHelpers';
 
 const Dashboard = () => {
@@ -20,6 +21,8 @@ const Dashboard = () => {
     getWeekSessions
   } = useStudyData();
 
+  const { openSubjectModal } = useModal();
+
   const todaySessions = getTodaySessions();
   const weekSessions = getWeekSessions();
   const todayTotal = todaySessions.reduce((sum, s) => sum + s.duration, 0);
@@ -31,6 +34,13 @@ const Dashboard = () => {
       description: '',
       duration: duration
     });
+  };
+
+  // Callback appelé quand le timer custom se termine
+  const handleTimerComplete = (duration) => {
+    console.log('🎯 Dashboard: Timer custom completed, duration:', duration);
+    console.log('🎯 Dashboard: Opening modal via context');
+    openSubjectModal(duration, handleSessionComplete);
   };
 
   return (
@@ -74,7 +84,10 @@ const Dashboard = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
             <div className="animate-slide-up" style={{ animationDelay: '0.2s' }}>
-              <Timer onSessionComplete={handleSessionComplete} />
+              <Timer 
+                onSessionComplete={handleSessionComplete}
+                onTimerComplete={handleTimerComplete}
+              />
             </div>
           </div>
 

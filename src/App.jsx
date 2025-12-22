@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { ModalProvider } from './contexts/ModalContext';
 import Navbar from './components/Navbar';
 import Dashboard from './pages/Dashboard';
 import Planning from './pages/Planning';
@@ -10,16 +11,18 @@ import Cours from './pages/Cours';
 function App() {
   return (
     <Router>
-      <div className="min-h-screen">
-        <Navbar />
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/planning" element={<Planning />} />
-          <Route path="/analytics" element={<Analytics />} />
-          <Route path="/link" element={<Links />} />
-          <Route path="/Cours" element={<Cours />} />
-        </Routes>
-      </div>
+      <ModalProvider>
+        <div className="min-h-screen">
+          <Navbar />
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/planning" element={<Planning />} />
+            <Route path="/analytics" element={<Analytics />} />
+            <Route path="/link" element={<Links />} />
+            <Route path="/Cours" element={<Cours />} />
+          </Routes>
+        </div>
+      </ModalProvider>
     </Router>
   );
 }
