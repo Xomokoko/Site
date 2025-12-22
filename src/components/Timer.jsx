@@ -5,7 +5,7 @@ import useNotification from '../hooks/useNotification';
 
 const Timer = ({ onSessionComplete }) => {
   const [timerMode, setTimerMode] = useState('pomodoro');
-  const [customMinutes, setCustomMinutes] = useState(1);
+  const [customMinutes, setCustomMinutes] = useState(50);
   const [completedDuration, setCompletedDuration] = useState(0);
   const [showSubjectModal, setShowSubjectModal] = useState(false);
   const [showSessionTypeModal, setShowSessionTypeModal] = useState(false);
