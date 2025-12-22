@@ -20,32 +20,25 @@ const useNotification = () => {
   }, []);
 
   const notifySessionComplete = useCallback(() => {
-    playSound('/break.mp3');
-    
-    if ('Notification' in window && Notification.permission === 'granted') {
-      new Notification('Session terminée', {
-        body: 'Félicitations ! Prenez une pause bien méritée',
-        icon: '/logo.png',
-        silent: true
-      });
-    }
+    playSound('/notification.mp3');
   }, [playSound]);
 
   const notifyBreak = useCallback(() => {
+    playSound('/break.mp3');
+  }, [playSound]);
+  const notifyContinueWork = useCallback(() => {
+    playSound('/break.mp3');
+  }, [playSound]);
+
+  const notifyTakeBreak = useCallback(() => {
     playSound('/notification.mp3');
-    
-    if ('Notification' in window && Notification.permission === 'granted') {
-      new Notification('Pause terminée', {
-        body: 'C\'est reparti pour une nouvelle session',
-        icon: '/logo.png',
-        silent: true
-      });
-    }
   }, [playSound]);
 
   return {
     notifySessionComplete,
     notifyBreak,
+    notifyContinueWork,
+    notifyTakeBreak,
     requestPermission
   };
 };

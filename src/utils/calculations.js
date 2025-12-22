@@ -1,17 +1,14 @@
-// Fonctions de calcul pour les statistiques
 
-// Calculer le temps total d'étude (en minutes)
 export const calculateTotalStudyTime = (sessions) => {
   return sessions.reduce((total, session) => total + (session.duration || 0), 0);
 };
 
-// Calculer la moyenne du temps d'étude par jour
+
 export const calculateAverageStudyTime = (sessions, days = 7) => {
   const total = calculateTotalStudyTime(sessions);
   return Math.round(total / days);
 };
 
-// Calculer le temps d'étude par matière
 export const calculateTimeBySubject = (sessions) => {
   const subjects = {};
   
@@ -20,14 +17,10 @@ export const calculateTimeBySubject = (sessions) => {
     subjects[subject] = (subjects[subject] || 0) + (session.duration || 0);
   });
   
-  return Object.entries(subjects).map(([name, time]) => ({
-    name,
-    time,
-    percentage: 0 // Sera calculé après
-  }));
+
+  return subjects;
 };
 
-// Calculer les pourcentages
 export const calculatePercentages = (data) => {
   const total = data.reduce((sum, item) => sum + item.time, 0);
   return data.map(item => ({
@@ -36,14 +29,23 @@ export const calculatePercentages = (data) => {
   }));
 };
 
-// Obtenir le top 3 des matières les plus étudiées
+
 export const getTopSubjects = (sessions, limit = 3) => {
-  const bySubject = calculateTimeBySubject(sessions);
-  const withPercentages = calculatePercentages(bySubject);
-  return withPercentages.sort((a, b) => b.time - a.time).slice(0, limit);
+  const timeBySubject = calculateTimeBySubject(sessions);
+  const totalTime = Object.values(timeBySubject).reduce((sum, time) => sum + time, 0);
+  
+  const subjects = Object.entries(timeBySubject)
+    .map(([subject, time]) => ({
+      subject,
+      time,
+      percentage: totalTime > 0 ? ((time / totalTime) * 100).toFixed(1) : 0
+    }))
+    .sort((a, b) => b.time - a.time)
+    .slice(0, limit);
+  
+  return subjects;
 };
 
-// Calculer les sessions par jour de la semaine
 export const calculateSessionsByDay = (sessions) => {
   const dayStats = {
     0: { day: 'Dim', count: 0, time: 0 },
@@ -64,7 +66,6 @@ export const calculateSessionsByDay = (sessions) => {
   return Object.values(dayStats);
 };
 
-// Calculer les tendances hebdomadaires
 export const calculateWeeklyTrend = (sessions, currentWeek, previousWeek) => {
   const currentTotal = calculateTotalStudyTime(currentWeek);
   const previousTotal = calculateTotalStudyTime(previousWeek);
@@ -82,11 +83,9 @@ export const calculateWeeklyTrend = (sessions, currentWeek, previousWeek) => {
   };
 };
 
-// Calculer le nombre de jours consécutifs d'étude
 export const calculateStreak = (sessions) => {
   if (sessions.length === 0) return 0;
-  
-  // Trier les sessions par date (plus récent d'abord)
+
   const sortedSessions = [...sessions].sort((a, b) => 
     new Date(b.date) - new Date(a.date)
   );
@@ -94,8 +93,7 @@ export const calculateStreak = (sessions) => {
   let streak = 0;
   let currentDate = new Date();
   currentDate.setHours(0, 0, 0, 0);
-  
-  // Grouper les sessions par jour
+
   const sessionsByDay = new Map();
   sortedSessions.forEach(session => {
     const date = new Date(session.date);
@@ -103,29 +101,28 @@ export const calculateStreak = (sessions) => {
     const dateKey = date.getTime();
     sessionsByDay.set(dateKey, true);
   });
-  
-  // Compter les jours consécutifs
+
   while (sessionsByDay.has(currentDate.getTime())) {
     streak++;
     currentDate.setDate(currentDate.getDate() - 1);
-  }
+  };
   
   return streak;
 };
 
-// Calculer des objectifs recommandés
+
 export const calculateRecommendedGoals = (sessions) => {
   const avgDaily = calculateAverageStudyTime(sessions, 7);
-  const recommended = Math.ceil(avgDaily * 1.2); // +20% de l'actuel
+  const recommended = Math.ceil(avgDaily * 1.2);
   
   return {
     current: avgDaily,
-    recommended: Math.max(recommended, 60), // Minimum 60 min
+    recommended: Math.max(recommended, 60),
     increase: Math.max(0, recommended - avgDaily)
   };
 };
 
-// Formater le temps pour l'affichage
+
 export const formatMinutes = (minutes) => {
   const hours = Math.floor(minutes / 60);
   const mins = minutes % 60;

@@ -5,9 +5,12 @@ import useNotification from '../hooks/useNotification';
 
 const Timer = ({ onSessionComplete }) => {
   const [timerMode, setTimerMode] = useState('pomodoro');
-  const [customMinutes, setCustomMinutes] = useState(50);
+  const [customMinutes, setCustomMinutes] = useState(1);
+  const [completedDuration, setCompletedDuration] = useState(0);
+  const [showSubjectModal, setShowSubjectModal] = useState(false);
   const [showSessionTypeModal, setShowSessionTypeModal] = useState(false);
-  const { notifySessionComplete, notifyBreak, requestPermission } = useNotification();
+  const [sessionSubject, setSessionSubject] = useState('');
+  const { notifySessionComplete, notifyBreak, notifyContinueWork, notifyTakeBreak, requestPermission } = useNotification();
 
   const modes = {
     pomodoro: { minutes: 25, label: 'Focus', color: 'bg-slate-900' },
@@ -18,28 +21,44 @@ const Timer = ({ onSessionComplete }) => {
 
   const currentMode = modes[timerMode];
 
-  const handleComplete = () => {
+  const handleComplete = (actualDuration) => {
+    console.log('Timer completed with duration:', actualDuration, 'minutes');
+    
     if (timerMode === 'pomodoro') {
       notifySessionComplete();
       if (onSessionComplete) {
-        onSessionComplete(currentMode.minutes);
+        onSessionComplete(actualDuration, 'Session de travail');
       }
     } else if (timerMode === 'custom') {
-      setShowSessionTypeModal(true);
+      console.log('Setting completedDuration to:', actualDuration);
+      setCompletedDuration(actualDuration);
+      console.log('Opening subject modal');
+      setShowSubjectModal(true);
     } else {
       notifyBreak();
+    }
+  };
+
+  const handleSubjectSubmit = () => {
+    if (sessionSubject.trim()) {
+      if (onSessionComplete) {
+        onSessionComplete(completedDuration, sessionSubject);
+      }
+      setShowSubjectModal(false);
+      setSessionSubject('');
+      setTimeout(() => {
+        setShowSessionTypeModal(true);
+      }, 100);
     }
   };
 
   const handleSessionTypeChoice = (isWorkSession) => {
     setShowSessionTypeModal(false);
     if (isWorkSession) {
-      notifySessionComplete();
-      if (onSessionComplete) {
-        onSessionComplete(customMinutes);
-      }
+      notifyContinueWork();
     } else {
-      notifyBreak();
+      notifyTakeBreak();
+      setTimerMode('shortBreak');
     }
   };
 
@@ -55,17 +74,33 @@ const Timer = ({ onSessionComplete }) => {
     getProgress
   } = useTimer(currentMode.minutes, handleComplete);
 
-  useEffect(() => {
-    reset(currentMode.minutes);
-  }, [timerMode, customMinutes]);
+  const handleReset = () => {
+    const minutesElapsed = reset(currentMode.minutes, true);
+    
+    if (minutesElapsed > 0 && (timerMode === 'pomodoro' || timerMode === 'custom')) {
+      console.log('Reset timer - saving', minutesElapsed, 'minutes');
+      if (onSessionComplete) {
+        onSessionComplete(minutesElapsed, 'Session de travail');
+      }
+    }
+  };
 
   const handleModeChange = (mode) => {
+    if (isRunning || isPaused) {
+      alert('Arrêtez le timer avant de changer de mode');
+      return;
+    }
     setTimerMode(mode);
-    reset(modes[mode].minutes);
+    reset(modes[mode].minutes, false);
   };
 
   const adjustCustomTime = (delta) => {
-    setCustomMinutes(prev => Math.max(1, Math.min(120, prev + delta)));
+    if (isRunning || isPaused) return;
+    const newMinutes = Math.max(1, Math.min(120, customMinutes + delta));
+    setCustomMinutes(newMinutes);
+    if (timerMode === 'custom') {
+      reset(newMinutes, false);
+    }
   };
 
   useEffect(() => {
@@ -190,7 +225,7 @@ const Timer = ({ onSessionComplete }) => {
             )}
             
             <button
-              onClick={() => reset(currentMode.minutes)}
+              onClick={handleReset}
               className="btn-secondary flex items-center gap-2 text-lg"
             >
               <RotateCcw className="w-5 h-5" />
@@ -200,28 +235,69 @@ const Timer = ({ onSessionComplete }) => {
         </div>
       </div>
 
+      {/* Modal pour demander la matière (session personnalisée) */}
+      {showSubjectModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 animate-fade-in">
+          <div className="card max-w-md w-full animate-slide-up">
+            <h3 className="text-2xl font-bold font-display mb-4 text-slate-800 dark:text-white text-center">
+              Session terminée !
+            </h3>
+            {completedDuration > 0 && (
+              <p className="text-slate-600 dark:text-slate-300 mb-2 text-center">
+                Durée : <span className="font-semibold">{completedDuration} minute{completedDuration > 1 ? 's' : ''}</span>
+              </p>
+            )}
+            <p className="text-slate-600 dark:text-slate-300 mb-6 text-center">
+              Quelle matière avez-vous étudiée ?
+            </p>
+
+            <div className="space-y-4">
+              <input
+                type="text"
+                value={sessionSubject}
+                onChange={(e) => setSessionSubject(e.target.value)}
+                placeholder="Ex: Mathématiques, Programmation..."
+                className="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                autoFocus
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    handleSubjectSubmit();
+                  }
+                }}
+              />
+
+              <button
+                onClick={handleSubjectSubmit}
+                disabled={!sessionSubject.trim()}
+                className="w-full py-3 px-6 rounded-xl font-semibold transition-all duration-300 bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Continuer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal pour demander le type de prochaine session */}
       {showSessionTypeModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 animate-fade-in">
           <div className="card max-w-md w-full animate-slide-up">
             <h3 className="text-2xl font-bold font-display mb-4 text-slate-800 dark:text-white text-center">
-              Session terminée
+              Que voulez-vous faire maintenant ?
             </h3>
-            <p className="text-slate-600 dark:text-slate-300 mb-6 text-center">
-              Qu'est ce que sera la prochaine session ?
-            </p>
 
             <div className="flex gap-4">
               <button
                 onClick={() => handleSessionTypeChoice(true)}
                 className="flex-1 py-4 px-6 rounded-xl font-semibold transition-all duration-300 bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg hover:shadow-xl"
               >
-                Session de travail
+                Continuer à travailler
               </button>
               <button
                 onClick={() => handleSessionTypeChoice(false)}
                 className="flex-1 py-4 px-6 rounded-xl font-semibold transition-all duration-300 bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg hover:shadow-xl"
               >
-                Pause
+                Prendre une pause
               </button>
             </div>
           </div>

@@ -1,51 +1,196 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 
+const TIMER_STORAGE_KEY = 'studyTimerState';
+
 const useTimer = (initialMinutes = 25, onComplete = null) => {
-  const [timeLeft, setTimeLeft] = useState(initialMinutes * 60);
-  const [isRunning, setIsRunning] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
+  const onCompleteRef = useRef(onComplete);
+  const hasRestoredRef = useRef(false);
   const intervalRef = useRef(null);
   const startTimeRef = useRef(null);
 
+  // Charger l'état sauvegardé une seule fois
+  const loadSavedState = () => {
+    try {
+      const saved = localStorage.getItem(TIMER_STORAGE_KEY);
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (e) {
+      console.error('Error loading timer:', e);
+    }
+    return null;
+  };
+
+  const savedState = loadSavedState();
+
+  // Initialiser avec l'état sauvegardé OU les valeurs par défaut
+  const [timeLeft, setTimeLeft] = useState(
+    savedState?.timeLeft ?? initialMinutes * 60
+  );
+  const [isRunning, setIsRunning] = useState(savedState?.isRunning ?? false);
+  const [isPaused, setIsPaused] = useState(savedState?.isPaused ?? false);
+  const [elapsedTime, setElapsedTime] = useState(savedState?.elapsedTime ?? 0);
+  const [currentInitialMinutes, setCurrentInitialMinutes] = useState(
+    savedState?.initialMinutes ?? initialMinutes
+  );
+
+  // Mettre à jour onCompleteRef
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
+
+  // Sauvegarder l'état
+  const saveState = useCallback(() => {
+    try {
+      const state = {
+        timeLeft,
+        isRunning,
+        isPaused,
+        elapsedTime,
+        startTimestamp: startTimeRef.current,
+        initialMinutes: currentInitialMinutes
+      };
+      localStorage.setItem(TIMER_STORAGE_KEY, JSON.stringify(state));
+      console.log('💾 Timer state saved:', state);
+    } catch (e) {
+      console.error('Error saving timer:', e);
+    }
+  }, [timeLeft, isRunning, isPaused, elapsedTime, currentInitialMinutes]);
+
+  // Sauvegarder à chaque changement
+  useEffect(() => {
+    if (hasRestoredRef.current) {
+      saveState();
+    }
+  }, [saveState]);
+
+  // Restaurer le timer au montage
+  useEffect(() => {
+    if (hasRestoredRef.current) return;
+    hasRestoredRef.current = true;
+
+    if (savedState && savedState.isRunning && savedState.startTimestamp) {
+      const now = Date.now();
+      const elapsed = Math.floor((now - savedState.startTimestamp) / 1000);
+      const newTimeLeft = Math.max(0, savedState.timeLeft - elapsed);
+
+      console.log('🔄 Restoring timer:', {
+        savedTimeLeft: savedState.timeLeft,
+        elapsed,
+        newTimeLeft
+      });
+
+      if (newTimeLeft === 0) {
+        // Timer terminé pendant l'absence
+        setIsRunning(false);
+        setTimeLeft(0);
+        const totalElapsed = savedState.elapsedTime + elapsed;
+        if (onCompleteRef.current) {
+          setTimeout(() => {
+            onCompleteRef.current(Math.ceil(totalElapsed / 60));
+          }, 100);
+        }
+        localStorage.removeItem(TIMER_STORAGE_KEY);
+      } else {
+        // Continuer le timer
+        setTimeLeft(newTimeLeft);
+        setIsRunning(true);
+        startTimeRef.current = now;
+      }
+    } else if (savedState && savedState.isPaused) {
+      console.log('🔄 Restoring paused timer:', savedState.timeLeft);
+      setTimeLeft(savedState.timeLeft);
+      setIsPaused(true);
+      setElapsedTime(savedState.elapsedTime);
+    }
+  }, []);
+
   const start = useCallback(() => {
+    console.log('▶️ Starting timer');
     setIsRunning(true);
     setIsPaused(false);
     startTimeRef.current = Date.now();
   }, []);
 
   const pause = useCallback(() => {
+    console.log('⏸️ Pausing timer');
+    if (startTimeRef.current) {
+      const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
+      setElapsedTime(prev => prev + elapsed);
+    }
     setIsPaused(true);
     setIsRunning(false);
+    startTimeRef.current = null;
   }, []);
 
   const resume = useCallback(() => {
+    console.log('▶️ Resuming timer');
     setIsPaused(false);
     setIsRunning(true);
+    startTimeRef.current = Date.now();
   }, []);
 
-  const reset = useCallback((minutes = initialMinutes) => {
+  const reset = useCallback((minutes = initialMinutes, saveProgress = false) => {
+    console.log('🔄 Resetting timer to', minutes, 'min');
+    
+    let minutesElapsed = 0;
+    if (saveProgress) {
+      let totalElapsed = elapsedTime;
+      if (startTimeRef.current) {
+        totalElapsed += Math.floor((Date.now() - startTimeRef.current) / 1000);
+      }
+      minutesElapsed = Math.ceil(totalElapsed / 60);
+    }
+
     setIsRunning(false);
     setIsPaused(false);
     setTimeLeft(minutes * 60);
+    setElapsedTime(0);
+    setCurrentInitialMinutes(minutes);
+    startTimeRef.current = null;
+
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
+      intervalRef.current = null;
     }
-  }, [initialMinutes]);
+
+    localStorage.removeItem(TIMER_STORAGE_KEY);
+    return minutesElapsed;
+  }, [elapsedTime, initialMinutes]);
 
   const addTime = useCallback((minutes) => {
     setTimeLeft(prev => prev + (minutes * 60));
   }, []);
 
+  // Gérer le compte à rebours
   useEffect(() => {
     if (isRunning && timeLeft > 0) {
       intervalRef.current = setInterval(() => {
         setTimeLeft(prev => {
           if (prev <= 1) {
             clearInterval(intervalRef.current);
+            intervalRef.current = null;
             setIsRunning(false);
-            if (onComplete) {
-              onComplete();
+
+            // Calculer la durée totale
+            let minutesWorked = currentInitialMinutes;
+            let totalElapsed = elapsedTime;
+            if (startTimeRef.current) {
+              const finalElapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
+              totalElapsed += finalElapsed;
+              minutesWorked = Math.ceil(totalElapsed / 60);
             }
+
+            console.log('✅ Timer completed - reporting', minutesWorked, 'minutes');
+            startTimeRef.current = null;
+
+            if (onCompleteRef.current) {
+              setTimeout(() => {
+                onCompleteRef.current(minutesWorked);
+              }, 0);
+            }
+
+            localStorage.removeItem(TIMER_STORAGE_KEY);
             return 0;
           }
           return prev - 1;
@@ -56,11 +201,11 @@ const useTimer = (initialMinutes = 25, onComplete = null) => {
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
+        intervalRef.current = null;
       }
     };
-  }, [isRunning, timeLeft, onComplete]);
+  }, [isRunning, timeLeft, elapsedTime, currentInitialMinutes]);
 
-  // Formater le temps pour l'affichage
   const formatTime = useCallback(() => {
     const minutes = Math.floor(timeLeft / 60);
     const seconds = timeLeft % 60;
@@ -68,9 +213,18 @@ const useTimer = (initialMinutes = 25, onComplete = null) => {
   }, [timeLeft]);
 
   const getProgress = useCallback(() => {
-    const total = initialMinutes * 60;
+    const total = currentInitialMinutes * 60;
+    if (total === 0) return 0;
     return ((total - timeLeft) / total) * 100;
-  }, [timeLeft, initialMinutes]);
+  }, [timeLeft, currentInitialMinutes]);
+
+  const getElapsedMinutes = useCallback(() => {
+    let total = elapsedTime;
+    if (isRunning && startTimeRef.current) {
+      total += Math.floor((Date.now() - startTimeRef.current) / 1000);
+    }
+    return Math.ceil(total / 60);
+  }, [elapsedTime, isRunning]);
 
   return {
     timeLeft,
@@ -83,6 +237,7 @@ const useTimer = (initialMinutes = 25, onComplete = null) => {
     addTime,
     formatTime,
     getProgress,
+    getElapsedMinutes,
     minutes: Math.floor(timeLeft / 60),
     seconds: timeLeft % 60
   };

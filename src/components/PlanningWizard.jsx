@@ -118,8 +118,6 @@ const PlanningWizard = ({ onClose, onGenerate }) => {
                     type="text"
                     value={formData.courseName}
                     onChange={(e) => setFormData({ ...formData, courseName: e.target.value })}
-                    onKeyPress={(e) => e.key === 'Enter' && addCourse()}
-                    placeholder="Ex: Mathématiques, Physique..."
                     className="input-field"
                   />
                 </div>

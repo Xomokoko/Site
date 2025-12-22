@@ -20,29 +20,17 @@ const Dashboard = () => {
     getWeekSessions
   } = useStudyData();
 
-  const [sessionSubject, setSessionSubject] = useState('');
-  const [sessionDescription, setSessionDescription] = useState('');
-  const [showSessionForm, setShowSessionForm] = useState(false);
-
   const todaySessions = getTodaySessions();
   const weekSessions = getWeekSessions();
   const todayTotal = todaySessions.reduce((sum, s) => sum + s.duration, 0);
 
-  const handleSessionComplete = (duration) => {
-    setShowSessionForm(true);
-  };
-
-  const saveSession = () => {
-    if (sessionSubject.trim()) {
-      addSession({
-        subject: sessionSubject,
-        description: sessionDescription,
-        duration: 25
-      });
-      setSessionSubject('');
-      setSessionDescription('');
-      setShowSessionForm(false);
-    }
+  const handleSessionComplete = (duration, subject = 'Session de travail') => {
+    console.log('Dashboard received session completion with duration:', duration, 'minutes, subject:', subject);
+    addSession({
+      subject: subject,
+      description: '',
+      duration: duration
+    });
   };
 
   return (
@@ -55,7 +43,6 @@ const Dashboard = () => {
           <p className="text-slate-600 dark:text-white">
           </p>
         </div>
-
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 animate-slide-up" style={{ animationDelay: '0.1s' }}>
           <StatCard
@@ -89,19 +76,6 @@ const Dashboard = () => {
             <div className="animate-slide-up" style={{ animationDelay: '0.2s' }}>
               <Timer onSessionComplete={handleSessionComplete} />
             </div>
-            {/* Recent Sessions */}
-            {todaySessions.length > 0 && (
-              <div className="animate-slide-up" style={{ animationDelay: '0.3s' }}>
-                <h2 className="text-2xl font-bold font-display mb-4 text-slate-800 dark:text-white">
-                  Sessions d'aujourd'hui
-                </h2>
-                <div className="space-y-4">
-                  {todaySessions.slice(0, 3).map((session) => (
-                    <StudySession key={session.id} session={session} />
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Sidebar */}

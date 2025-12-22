@@ -9,6 +9,78 @@ import { calculateTimeBySubject, getTopSubjects } from '../utils/calculations';
 const Analytics = () => {
   const { sessions } = useStudyData();
   const [timeRange, setTimeRange] = useState('week');
+  const [showMigrationButton, setShowMigrationButton] = useState(false);
+
+  // Vérifier si des sessions n'ont pas de subject valide
+  useMemo(() => {
+    const sessionsWithInvalidSubject = sessions.filter(s => 
+      !s.subject || 
+      s.subject === '' || 
+      typeof s.subject !== 'string'
+    );
+    setShowMigrationButton(sessionsWithInvalidSubject.length > 0);
+    
+    if (sessionsWithInvalidSubject.length > 0) {
+      console.log('⚠️ Sessions avec subject invalide:', sessionsWithInvalidSubject);
+    }
+  }, [sessions]);
+
+  const migrateOldSessions = () => {
+    const allSessions = JSON.parse(localStorage.getItem('studySessions') || '[]');
+    
+    console.log('=== AVANT NETTOYAGE ===');
+    console.table(allSessions.map(s => ({
+      subject: s.subject,
+      type: typeof s.subject,
+      duration: s.duration
+    })));
+    
+    // Nettoyer les sessions
+    const cleanedSessions = allSessions.map(session => {
+      let subject = 'Non spécifié';
+      
+      // Extraire le nom correct
+      if (session.subject) {
+        if (typeof session.subject === 'string') {
+          subject = session.subject.trim();
+        } else if (typeof session.subject === 'object') {
+          subject = session.subject.name || session.subject.subject || 'Non spécifié';
+        }
+      }
+      
+      // Normaliser "Session de travail" en "Non spécifié" si c'est vide
+      if (subject === 'Session de travail' || subject === '') {
+        subject = 'Non spécifié';
+      }
+      
+      return {
+        id: session.id,
+        date: session.date,
+        subject: subject,
+        description: session.description || '',
+        duration: session.duration || 0,
+        startTime: session.startTime
+      };
+    });
+    
+    console.log('=== APRÈS NETTOYAGE ===');
+    console.table(cleanedSessions.map(s => ({
+      subject: s.subject,
+      duration: s.duration
+    })));
+    
+    // Grouper par sujet pour voir le résultat
+    const grouped = {};
+    cleanedSessions.forEach(s => {
+      grouped[s.subject] = (grouped[s.subject] || 0) + s.duration;
+    });
+    console.log('=== PAR MATIÈRE ===');
+    console.table(grouped);
+    
+    localStorage.setItem('studySessions', JSON.stringify(cleanedSessions));
+    alert(`Nettoyage terminé ! ${cleanedSessions.length} sessions. La page va se recharger.`);
+    window.location.reload();
+  };
 
   const filteredSessions = useMemo(() => {
     const now = new Date();
@@ -70,7 +142,20 @@ const Analytics = () => {
           <h1 className="text-4xl font-bold font-display mb-2 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
             Analyses & Statistiques
           </h1>
-
+          
+          {showMigrationButton && (
+            <div className="mt-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 border-2 border-yellow-400 rounded-xl">
+              <p className="text-yellow-800 dark:text-yellow-200 mb-3">
+                ⚠️ Des sessions ont des noms de matières invalides. Cliquez pour nettoyer et regrouper les matières identiques.
+              </p>
+              <button
+                onClick={migrateOldSessions}
+                className="px-6 py-2 bg-yellow-500 hover:bg-yellow-600 text-white font-semibold rounded-lg transition-colors"
+              >
+                Nettoyer et regrouper
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="flex justify-center mb-8 animate-slide-up" style={{ animationDelay: '0.1s' }}>
@@ -150,7 +235,9 @@ const Analytics = () => {
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip 
+                    formatter={(value, name, props) => [`${value} min`, props.payload.name]}
+                  />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -161,9 +248,19 @@ const Analytics = () => {
               </h2>
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={barData}>
-                  <XAxis dataKey="subject" />
-                  <YAxis />
-                  <Tooltip formatter={(value) => `${value} min`} />
+                  <XAxis 
+                    dataKey="subject" 
+                    angle={-45} 
+                    textAnchor="end" 
+                    height={100}
+                    interval={0}
+                  />
+                  <YAxis label={{ value: 'Minutes', angle: -90, position: 'insideLeft' }} />
+                  <Tooltip 
+                    formatter={(value) => [`${value} min`, 'Temps étudié']}
+                    labelFormatter={(label) => `Matière: ${label}`}
+                    contentStyle={{ backgroundColor: 'white', border: '1px solid #ccc' }}
+                  />
                   <Bar dataKey="temps" fill="#3b82f6" />
                 </BarChart>
               </ResponsiveContainer>
@@ -176,8 +273,12 @@ const Analytics = () => {
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={dayData}>
                   <XAxis dataKey="day" />
-                  <YAxis />
-                  <Tooltip formatter={(value) => `${value} min`} />
+                  <YAxis label={{ value: 'Minutes', angle: -90, position: 'insideLeft' }} />
+                  <Tooltip 
+                    formatter={(value) => [`${value} min`, 'Temps étudié']}
+                    labelFormatter={(label) => `Jour: ${label}`}
+                    contentStyle={{ backgroundColor: 'white', border: '1px solid #ccc' }}
+                  />
                   <Bar dataKey="temps" fill="#8b5cf6" />
                 </BarChart>
               </ResponsiveContainer>
@@ -189,7 +290,7 @@ const Analytics = () => {
                 Top 3 Matières
               </h2>
               <div className="space-y-4">
-                {topSubjects.map((subject, index) => (
+                {topSubjects.length > 0 ? topSubjects.map((subject, index) => (
                   <div key={index} className="flex items-center gap-4">
                     <div className={`flex items-center justify-center w-12 h-12 rounded-xl font-bold text-white ${
                       index === 0 ? 'bg-gradient-to-br from-yellow-400 to-yellow-600' :
@@ -205,7 +306,11 @@ const Analytics = () => {
                       </div>
                     </div>
                   </div>
-                ))}
+                )) : (
+                  <p className="text-slate-600 dark:text-slate-300 text-center py-4">
+                    Aucune matière enregistrée
+                  </p>
+                )}
               </div>
             </div>
           </div>

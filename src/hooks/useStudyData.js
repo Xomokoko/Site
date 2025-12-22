@@ -36,17 +36,32 @@ const useStudyData = () => {
   };
 
   const addSession = useCallback((sessionData) => {
+    // S'assurer que subject est bien une string simple
+    let subject = 'Session de travail'; // Valeur par défaut
+    
+    if (sessionData.subject) {
+      if (typeof sessionData.subject === 'string') {
+        subject = sessionData.subject;
+      } else if (typeof sessionData.subject === 'object' && sessionData.subject.name) {
+        subject = sessionData.subject.name;
+      }
+    }
+    
     const newSession = {
       id: sessionData.id || `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       date: sessionData.date || new Date().toISOString(),
-      ...sessionData
-  };
-  
-  saveStudySession(newSession);
-  const updatedSessions = [...sessions, newSession];
-  setSessions(updatedSessions);
-  updateStats(updatedSessions);
-}, [sessions]);
+      subject: subject,
+      description: sessionData.description || '',
+      duration: sessionData.duration || 0
+    };
+    
+    console.log('📝 Saving session:', newSession);
+    
+    saveStudySession(newSession);
+    const updatedSessions = [...sessions, newSession];
+    setSessions(updatedSessions);
+    updateStats(updatedSessions);
+  }, [sessions]);
 
   const deleteSession = useCallback((sessionId) => {
     const allSessions = getStudySessions();
@@ -97,21 +112,35 @@ const useStudyData = () => {
   };
   
   const addMultipleSessions = useCallback((sessionsArray) => {
-  const allSessions = getStudySessions();
-  const newSessions = sessionsArray.map(sessionData => ({
-    id: sessionData.id || `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-    date: sessionData.date,
-    ...sessionData
-  }));
-  
-  const updatedSessions = [...allSessions, ...newSessions];
-  localStorage.setItem('studySessions', JSON.stringify(updatedSessions));
-  
-  setSessions(updatedSessions);
-  updateStats(updatedSessions);
-  
-  return newSessions.length;
-}, []);
+    const allSessions = getStudySessions();
+    const newSessions = sessionsArray.map(sessionData => {
+      // S'assurer que subject est bien une string
+      let subject = 'Session de travail';
+      if (sessionData.subject) {
+        if (typeof sessionData.subject === 'string') {
+          subject = sessionData.subject;
+        } else if (typeof sessionData.subject === 'object' && sessionData.subject.name) {
+          subject = sessionData.subject.name;
+        }
+      }
+      
+      return {
+        id: sessionData.id || `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        date: sessionData.date,
+        subject: subject,
+        description: sessionData.description || '',
+        duration: sessionData.duration || 0
+      };
+    });
+    
+    const updatedSessions = [...allSessions, ...newSessions];
+    localStorage.setItem('studySessions', JSON.stringify(updatedSessions));
+    
+    setSessions(updatedSessions);
+    updateStats(updatedSessions);
+    
+    return newSessions.length;
+  }, []);
 
   return {
     sessions,
