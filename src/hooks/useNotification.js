@@ -20,18 +20,18 @@ const useNotification = () => {
   }, []);
 
   const notifySessionComplete = useCallback(() => {
-    playSound('/break.mp3');
+    playSound('/notification.mp3');
   }, [playSound]);
 
   const notifyBreak = useCallback(() => {
-    playSound('/notification.mp3');
+    playSound('/break.mp3');
   }, [playSound]);
   const notifyContinueWork = useCallback(() => {
-    playSound('/notification.mp3');
+    playSound('/break.mp3');
   }, [playSound]);
 
   const notifyTakeBreak = useCallback(() => {
-    playSound('/break.mp3');
+    playSound('/notification.mp3');
   }, [playSound]);
 
   return {
