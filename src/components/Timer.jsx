@@ -4,7 +4,7 @@ import useTimer from '../hooks/useTimer';
 
 const Timer = ({ onSessionComplete, onTimerComplete }) => {
   const [timerMode, setTimerMode] = useState('pomodoro');
-  const [customMinutes, setCustomMinutes] = useState(1);
+  const [customMinutes, setCustomMinutes] = useState(50);
 
   const modes = {
     pomodoro: { minutes: 25, label: 'Focus', color: 'bg-slate-900' },
