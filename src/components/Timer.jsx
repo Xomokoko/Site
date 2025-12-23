@@ -8,8 +8,8 @@ const Timer = ({ onSessionComplete, onTimerComplete }) => {
 
   const modes = {
     pomodoro: { minutes: 25, label: 'Focus', color: 'bg-slate-900' },
-    shortBreak: { minutes: 10, label: 'Pause courte', color: 'bg-slate-900' },
-    longBreak: { minutes: 15, label: 'Pause longue', color: 'bg-slate-900' },
+    shortBreak: { minutes: 5, label: 'Pause courte', color: 'bg-slate-900' },
+    longBreak: { minutes: 10, label: 'Pause longue', color: 'bg-slate-900' },
     custom: { minutes: customMinutes, label: 'Personnalisé', color: 'bg-slate-900' }
   };
 
@@ -18,13 +18,11 @@ const Timer = ({ onSessionComplete, onTimerComplete }) => {
   const handleComplete = (actualDuration) => {
     console.log('Timer completed with duration:', actualDuration, 'minutes, mode:', timerMode);
     
-    // Pour les pauses, on ne fait rien
     if (timerMode === 'shortBreak' || timerMode === 'longBreak') {
       console.log('Break timer completed');
       return;
     }
     
-    // Pour tous les autres modes (pomodoro et custom), on affiche le modal
     console.log('Work timer completed - showing subject modal');
     if (onTimerComplete) {
       onTimerComplete(actualDuration);

@@ -19,7 +19,7 @@ export const ModalProvider = ({ children }) => {
   const [onSessionCompleteCallback, setOnSessionCompleteCallback] = useState(null);
 
   const openSubjectModal = (duration, callback) => {
-    console.log('🎯 ModalContext: Opening subject modal with duration:', duration);
+    console.log('ModalContext: Opening subject modal with duration:', duration);
     
     // Jouer le son ding.wav
     try {
@@ -36,7 +36,7 @@ export const ModalProvider = ({ children }) => {
 
   const handleSubjectSubmit = () => {
     if (sessionSubject.trim()) {
-      console.log('🎯 ModalContext: Subject submitted:', sessionSubject);
+      console.log('ModalContext: Subject submitted:', sessionSubject);
       if (onSessionCompleteCallback) {
         onSessionCompleteCallback(completedDuration, sessionSubject);
       }
