@@ -22,7 +22,7 @@ export const TimerProvider = ({ children }) => {
   const modes = {
     pomodoro: { minutes: 25, label: 'Focus', color: 'bg-slate-900' },
     shortBreak: { minutes: 5, label: 'Pause courte', color: 'bg-slate-900' },
-    longBreak: { minutes: 1, label: 'Pause longue', color: 'bg-slate-900' },
+    longBreak: { minutes: 10, label: 'Pause longue', color: 'bg-slate-900' },
     custom: { minutes: customMinutes, label: 'Personnalisé', color: 'bg-slate-900' }
   };
 
