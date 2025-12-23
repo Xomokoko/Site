@@ -171,20 +171,23 @@ const useTimer = (initialMinutes = 25, onComplete = null) => {
   useEffect(() => {
     if (isRunning && timeLeft > 0) {
       intervalRef.current = setInterval(() => {
-        setTimeLeft(prev => {
-          if (prev <= 1) {
+        // Calculer le temps réel écoulé depuis le début
+        if (startTimeRef.current) {
+          const now = Date.now();
+          const elapsed = Math.floor((now - startTimeRef.current) / 1000);
+          const newTimeLeft = Math.max(0, (currentInitialMinutes * 60) - elapsed - elapsedTime);
+          
+          setTimeLeft(newTimeLeft);
+          
+          // Timer terminé
+          if (newTimeLeft === 0) {
             clearInterval(intervalRef.current);
             intervalRef.current = null;
             setIsRunning(false);
 
             // Calculer la durée totale
-            let minutesWorked = currentInitialMinutes;
-            let totalElapsed = elapsedTime;
-            if (startTimeRef.current) {
-              const finalElapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
-              totalElapsed += finalElapsed;
-              minutesWorked = Math.ceil(totalElapsed / 60);
-            }
+            const totalElapsed = elapsedTime + elapsed;
+            const minutesWorked = Math.ceil(totalElapsed / 60);
 
             console.log('✅ Timer completed - reporting', minutesWorked, 'minutes');
             startTimeRef.current = null;
@@ -197,11 +200,9 @@ const useTimer = (initialMinutes = 25, onComplete = null) => {
             }
 
             localStorage.removeItem(TIMER_STORAGE_KEY);
-            return 0;
           }
-          return prev - 1;
-        });
-      }, 1000);
+        }
+      }, 100); // Vérifier toutes les 100ms pour plus de précision
     }
 
     return () => {
@@ -210,7 +211,7 @@ const useTimer = (initialMinutes = 25, onComplete = null) => {
         intervalRef.current = null;
       }
     };
-  }, [isRunning, timeLeft, elapsedTime, currentInitialMinutes]);
+  }, [isRunning, elapsedTime, currentInitialMinutes]);
 
   const formatTime = useCallback(() => {
     const minutes = Math.floor(timeLeft / 60);

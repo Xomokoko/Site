@@ -35,22 +35,26 @@ export const ModalProvider = ({ children }) => {
   };
 
   const handleSubjectSubmit = () => {
-    if (sessionSubject.trim()) {
-      console.log('ModalContext: Subject submitted:', sessionSubject);
-      if (onSessionCompleteCallback) {
-        onSessionCompleteCallback(completedDuration, sessionSubject);
-      }
-      setShowSubjectModal(false);
-      setSessionSubject('');
-      setTimeout(() => {
-        setShowSessionTypeModal(true);
-      }, 100);
+    console.log('ModalContext: handleSubjectSubmit called, sessionSubject:', sessionSubject);
+    const subject = sessionSubject.trim() || 'Session de travail';
+    
+    console.log('ModalContext: Subject submitted:', subject);
+    if (onSessionCompleteCallback) {
+      onSessionCompleteCallback(completedDuration, subject);
     }
+    setShowSubjectModal(false);
+    setSessionSubject('');
+    console.log('ModalContext: Opening session type modal in 100ms...');
+    setTimeout(() => {
+      console.log('ModalContext: Setting showSessionTypeModal to true');
+      setShowSessionTypeModal(true);
+    }, 100);
   };
 
   const handleSessionTypeChoice = (isWorkSession) => {
-    console.log(' ModalContext: Session type choice:', isWorkSession ? 'work' : 'break');
-
+    console.log('ModalContext: Session type choice:', isWorkSession ? 'work' : 'break');
+    
+    // Jouer le son approprié (inversé selon demande utilisateur)
     try {
       const soundFile = isWorkSession ? '/break.mp3' : '/notification.mp3';
       const audio = new Audio(soundFile);
@@ -63,7 +67,7 @@ export const ModalProvider = ({ children }) => {
   };
 
   return (
-    <ModalContext.Provider value={{ openSubjectModal }}>
+    <ModalContext.Provider value={{ openSubjectModal, openSessionTypeModal: () => setShowSessionTypeModal(true) }}>
       {children}
       
       {/* Modal pour demander la matière - Toujours monté */}
@@ -98,8 +102,7 @@ export const ModalProvider = ({ children }) => {
 
               <button
                 onClick={handleSubjectSubmit}
-                disabled={!sessionSubject.trim()}
-                className="w-full py-3 px-6 rounded-xl font-semibold transition-all duration-300 bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full py-3 px-6 rounded-xl font-semibold transition-all duration-300 bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg hover:shadow-xl"
               >
                 Continuer
               </button>

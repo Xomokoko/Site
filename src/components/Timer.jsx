@@ -1,34 +1,7 @@
-import { useState, useEffect } from 'react';
 import { Play, Pause, RotateCcw, Clock, Plus, Minus } from 'lucide-react';
-import useTimer from '../hooks/useTimer';
+import { useTimerContext } from '../contexts/TimerContext';
 
-const Timer = ({ onSessionComplete, onTimerComplete }) => {
-  const [timerMode, setTimerMode] = useState('pomodoro');
-  const [customMinutes, setCustomMinutes] = useState(50);
-
-  const modes = {
-    pomodoro: { minutes: 25, label: 'Focus', color: 'bg-slate-900' },
-    shortBreak: { minutes: 5, label: 'Pause courte', color: 'bg-slate-900' },
-    longBreak: { minutes: 10, label: 'Pause longue', color: 'bg-slate-900' },
-    custom: { minutes: customMinutes, label: 'Personnalisé', color: 'bg-slate-900' }
-  };
-
-  const currentMode = modes[timerMode];
-
-  const handleComplete = (actualDuration) => {
-    console.log('Timer completed with duration:', actualDuration, 'minutes, mode:', timerMode);
-    
-    if (timerMode === 'shortBreak' || timerMode === 'longBreak') {
-      console.log('Break timer completed');
-      return;
-    }
-    
-    console.log('Work timer completed - showing subject modal');
-    if (onTimerComplete) {
-      onTimerComplete(actualDuration);
-    }
-  };
-
+const Timer = () => {
   const {
     timeLeft,
     isRunning,
@@ -36,40 +9,17 @@ const Timer = ({ onSessionComplete, onTimerComplete }) => {
     start,
     pause,
     resume,
-    reset,
     formatTime,
-    getProgress
-  } = useTimer(currentMode.minutes, handleComplete);
+    getProgress,
+    timerMode,
+    customMinutes,
+    modes,
+    handleModeChange,
+    adjustCustomTime,
+    handleReset
+  } = useTimerContext();
 
-  const handleReset = () => {
-    const minutesElapsed = reset(currentMode.minutes, true);
-    
-    if (minutesElapsed > 0 && (timerMode === 'pomodoro' || timerMode === 'custom')) {
-      console.log('Reset timer - saving', minutesElapsed, 'minutes');
-      if (onSessionComplete) {
-        onSessionComplete(minutesElapsed, 'Session de travail');
-      }
-    }
-  };
-
-  const handleModeChange = (mode) => {
-    if (isRunning || isPaused) {
-      alert('Arrêtez le timer avant de changer de mode');
-      return;
-    }
-    setTimerMode(mode);
-    reset(modes[mode].minutes, false);
-  };
-
-  const adjustCustomTime = (delta) => {
-    if (isRunning || isPaused) return;
-    const newMinutes = Math.max(1, Math.min(120, customMinutes + delta));
-    setCustomMinutes(newMinutes);
-    if (timerMode === 'custom') {
-      reset(newMinutes, false);
-    }
-  };
-
+  const currentMode = modes[timerMode];
   const progress = getProgress();
   const circumference = 2 * Math.PI * 140;
   const strokeDashoffset = circumference - (progress / 100) * circumference;

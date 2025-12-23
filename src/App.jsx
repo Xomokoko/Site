@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ModalProvider } from './contexts/ModalContext';
+import { TimerProvider } from './contexts/TimerContext';
 import Navbar from './components/Navbar';
 import Dashboard from './pages/Dashboard';
 import Planning from './pages/Planning';
@@ -12,16 +13,18 @@ function App() {
   return (
     <Router>
       <ModalProvider>
-        <div className="min-h-screen">
-          <Navbar />
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/planning" element={<Planning />} />
-            <Route path="/analytics" element={<Analytics />} />
-            <Route path="/link" element={<Links />} />
-            <Route path="/Cours" element={<Cours />} />
-          </Routes>
-        </div>
+        <TimerProvider>
+          <div className="min-h-screen">
+            <Navbar />
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/planning" element={<Planning />} />
+              <Route path="/analytics" element={<Analytics />} />
+              <Route path="/link" element={<Links />} />
+              <Route path="/Cours" element={<Cours />} />
+            </Routes>
+          </div>
+        </TimerProvider>
       </ModalProvider>
     </Router>
   );

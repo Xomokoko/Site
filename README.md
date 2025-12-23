@@ -43,6 +43,9 @@ Application moderne et élégante pour gérer vos sessions d'étude, avec timer 
 ```
 mon-app-etudes/
 ├── src/
+├── contexts/
+│   ├── ModalContext.jsx
+│   └── TimerContext.jsx 
 │   ├── components/        # Composants réutilisables
 │   │   ├── Navbar.jsx
 │   │   ├── Timer.jsx
