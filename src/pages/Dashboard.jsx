@@ -8,6 +8,8 @@ import useStudyData from '../hooks/useStudyData';
 import { formatDuration } from '../utils/dateHelpers';
 
 const Dashboard = () => {
+  const [refreshKey, setRefreshKey] = useState(0);
+  
   const {
     sessions,
     tasks,
@@ -17,12 +19,22 @@ const Dashboard = () => {
     toggleTaskComplete,
     removeTask,
     getTodaySessions,
-    getWeekSessions
+    getWeekSessions,
+    reloadData
   } = useStudyData();
 
   const todaySessions = getTodaySessions();
   const weekSessions = getWeekSessions();
   const todayTotal = todaySessions.reduce((sum, s) => sum + s.duration, 0);
+
+  useEffect(() => {
+    const handleSessionAdded = () => {
+      reloadData();
+    };
+    
+    window.addEventListener('sessionAdded', handleSessionAdded);
+    return () => window.removeEventListener('sessionAdded', handleSessionAdded);
+  }, [reloadData]);
 
   return (
     <div className="min-h-screen py-8 px-4 sm:px-6 lg:px-8">

@@ -111,6 +111,16 @@ const useStudyData = () => {
     return sessions.filter(s => new Date(s.date) >= weekAgo);
   };
   
+  // Fonction pour recharger les données depuis localStorage
+  const reloadData = useCallback(() => {
+    console.log('🔄 Reloading study data from localStorage');
+    const loadedSessions = getStudySessions();
+    const loadedTasks = getTasks();
+    setSessions(loadedSessions);
+    setTasks(loadedTasks);
+    updateStats(loadedSessions);
+  }, []);
+  
   const addMultipleSessions = useCallback((sessionsArray) => {
     const allSessions = getStudySessions();
     const newSessions = sessionsArray.map(sessionData => {
@@ -153,7 +163,8 @@ const useStudyData = () => {
     removeTask,
     getTodaySessions,
     getWeekSessions,
-    deleteSession
+    deleteSession,
+    reloadData  // Nouvelle fonction exportée
   };
 };
 
