@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+
 import { createPortal } from 'react-dom';
 
 const ModalContext = createContext();
@@ -79,7 +80,7 @@ export const ModalProvider = ({ children }) => {
 
   const handleSessionTypeChoice = (isWorkSession) => {
     try {
-      const soundFile = isWorkSession ? '/break.mp3' : '/notification.mp3';
+      const soundFile = isWorkSession ? '/BRUH.mp3' : '/notification.mp3';
       const audio = new Audio(soundFile);
       audio.play().catch(() => {});
     } catch {}

@@ -24,10 +24,10 @@ const useNotification = () => {
   }, [playSound]);
 
   const notifyBreak = useCallback(() => {
-    playSound('/break.mp3');
+    playSound('/BRUH.mp3');
   }, [playSound]);
   const notifyContinueWork = useCallback(() => {
-    playSound('/break.mp3');
+    playSound('/BRUH.mp3');
   }, [playSound]);
 
   const notifyTakeBreak = useCallback(() => {
