@@ -98,7 +98,7 @@ const Cours = () => {
                     <button
                       onClick={() => toggleFavorite(course.id)}
                       className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700"
-                      title={course.favorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+                      title={course.favorite ? 'Retirer des cours enregistrés' : 'Ajouter aux cours enregistrés'}
                       aria-label="Favori"
                     >
                       <Star
