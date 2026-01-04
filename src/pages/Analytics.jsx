@@ -304,7 +304,11 @@ const Analytics = () => {
                   <Tooltip
                     formatter={(value) => [`${value} min`, 'Temps étudié']}
                     labelFormatter={(label) => `Matière: ${label}`}
-                    contentStyle={{ backgroundColor: 'white', border: '1px solid #ccc' }}
+                    contentStyle={{ 
+                      backgroundColor: 'var(--tooltip-bg, white)', 
+                      border: '1px solid #ccc',
+                      color: 'var(--tooltip-text, black)'
+                    }}
                   />
                   <Bar dataKey="temps" fill="#3b82f6" />
                 </BarChart>
@@ -322,7 +326,11 @@ const Analytics = () => {
                   <Tooltip
                     formatter={(value) => [`${value} min`, 'Temps étudié']}
                     labelFormatter={(label) => `Jour: ${label}`}
-                    contentStyle={{ backgroundColor: 'white', border: '1px solid #ccc' }}
+                    contentStyle={{ 
+                      backgroundColor: 'var(--tooltip-bg, white)', 
+                      border: '1px solid #ccc',
+                      color: 'var(--tooltip-text, black)'
+                    }}
                   />
                   <Bar dataKey="temps" fill="#8b5cf6" />
                 </BarChart>
