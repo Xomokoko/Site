@@ -1,5 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
-import { saveStudySession, getStudySessions, saveTask, getTasks, updateTask as updateTaskStorage, deleteTask } from '../utils/storage';
+import {
+  saveStudySession,
+  getStudySessions,
+  saveTask,
+  getTasks,
+  updateTask as updateTaskStorage,
+  deleteTask
+} from '../utils/storage';
 
 const useStudyData = () => {
   const [sessions, setSessions] = useState([]);
@@ -11,66 +18,89 @@ const useStudyData = () => {
     averageTime: 0
   });
 
-  useEffect(() => {
-    const loadedSessions = getStudySessions();
-    const loadedTasks = getTasks();
-    setSessions(loadedSessions);
-    setTasks(loadedTasks);
-    updateStats(loadedSessions);
-  }, []);
-
-  const updateStats = (sessionList) => {
-    const totalTime = sessionList.reduce((sum, s) => sum + s.duration, 0);
+  const updateStats = useCallback((sessionList) => {
+    const totalTime = sessionList.reduce((sum, s) => sum + (s.duration || 0), 0);
     const sessionsCount = sessionList.length;
     const averageTime = sessionsCount > 0 ? Math.round(totalTime / sessionsCount) : 0;
 
     const uniqueDays = new Set(sessionList.map(s => new Date(s.date).toDateString()));
     const streak = uniqueDays.size;
 
-    setStats({
-      totalTime,
-      sessionsCount,
-      streak,
-      averageTime
-    });
-  };
+    setStats({ totalTime, sessionsCount, streak, averageTime });
+  }, []);
+
+  useEffect(() => {
+    const loadedSessions = getStudySessions();
+    const loadedTasks = getTasks();
+    setSessions(loadedSessions);
+    setTasks(loadedTasks);
+    updateStats(loadedSessions);
+  }, [updateStats]);
+
+  const reloadData = useCallback(() => {
+    const loadedSessions = getStudySessions();
+    const loadedTasks = getTasks();
+    setSessions(loadedSessions);
+    setTasks(loadedTasks);
+    updateStats(loadedSessions);
+  }, [updateStats]);
 
   const addSession = useCallback((sessionData) => {
-    // S'assurer que subject est bien une string simple
-    let subject = 'Session de travail'; // Valeur par défaut
-    
-    if (sessionData.subject) {
-      if (typeof sessionData.subject === 'string') {
-        subject = sessionData.subject;
-      } else if (typeof sessionData.subject === 'object' && sessionData.subject.name) {
-        subject = sessionData.subject.name;
-      }
+    let subject = 'Session de travail';
+    if (sessionData?.subject) {
+      if (typeof sessionData.subject === 'string') subject = sessionData.subject;
+      else if (typeof sessionData.subject === 'object' && sessionData.subject.name) subject = sessionData.subject.name;
     }
-    
+
     const newSession = {
-      id: sessionData.id || `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: sessionData.id || `session-${Date.now()}-${Math.random().toString(36).slice(2)}`,
       date: sessionData.date || new Date().toISOString(),
-      subject: subject,
+      subject,
       description: sessionData.description || '',
-      duration: sessionData.duration || 0
+      duration: Number(sessionData.duration || 0)
     };
-    
-    console.log('📝 Saving session:', newSession);
-    
+
     saveStudySession(newSession);
-    const updatedSessions = [...sessions, newSession];
-    setSessions(updatedSessions);
-    updateStats(updatedSessions);
-  }, [sessions]);
+    const updated = [...sessions, newSession];
+    setSessions(updated);
+    updateStats(updated);
+  }, [sessions, updateStats]);
+
+  const addMultipleSessions = useCallback((sessionsArray) => {
+    const all = getStudySessions();
+
+    const newSessions = (sessionsArray || []).map((s) => {
+      let subject = 'Session de travail';
+      if (s?.subject) {
+        if (typeof s.subject === 'string') subject = s.subject;
+        else if (typeof s.subject === 'object' && s.subject.name) subject = s.subject.name;
+      }
+
+      return {
+        id: s.id || `session-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        date: s.date || new Date().toISOString(),
+        subject,
+        description: s.description || '',
+        duration: Number(s.duration || 0),
+        startTime: s.startTime
+      };
+    });
+
+    const updated = [...all, ...newSessions];
+    localStorage.setItem('studySessions', JSON.stringify(updated));
+    setSessions(updated);
+    updateStats(updated);
+
+    return newSessions.length;
+  }, [updateStats]);
 
   const deleteSession = useCallback((sessionId) => {
-    const allSessions = getStudySessions();
-    const filtered = allSessions.filter(s => s.id !== sessionId);
+    const all = getStudySessions();
+    const filtered = all.filter(s => s.id !== sessionId);
     localStorage.setItem('studySessions', JSON.stringify(filtered));
-    
     setSessions(filtered);
     updateStats(filtered);
-  }, []);
+  }, [updateStats]);
 
   const addTask = useCallback((taskData) => {
     const newTask = {
@@ -79,78 +109,37 @@ const useStudyData = () => {
       createdAt: new Date().toISOString(),
       ...taskData
     };
-    
     saveTask(newTask);
-    setTasks([...tasks, newTask]);
-  }, [tasks]);
+    setTasks(prev => [...prev, newTask]);
+  }, []);
 
   const toggleTaskComplete = useCallback((taskId) => {
-    const updatedTasks = tasks.map(task =>
-      task.id === taskId
-        ? { ...task, completed: !task.completed, completedAt: !task.completed ? new Date().toISOString() : null }
-        : task
-    );
-    
-    updatedTasks.forEach(task => updateTaskStorage(task));
-    setTasks(updatedTasks);
-  }, [tasks]);
+    setTasks(prev => {
+      const updated = prev.map(t =>
+        t.id === taskId
+          ? { ...t, completed: !t.completed, completedAt: !t.completed ? new Date().toISOString() : null }
+          : t
+      );
+      updated.forEach(t => updateTaskStorage(t.id, t));
+      return updated;
+    });
+  }, []);
 
   const removeTask = useCallback((taskId) => {
     deleteTask(taskId);
-    setTasks(tasks.filter(task => task.id !== taskId));
-  }, [tasks]);
+    setTasks(prev => prev.filter(t => t.id !== taskId));
+  }, []);
 
-  const getTodaySessions = () => {
+  const getTodaySessions = useCallback(() => {
     const today = new Date().toDateString();
     return sessions.filter(s => new Date(s.date).toDateString() === today);
-  };
+  }, [sessions]);
 
-  const getWeekSessions = () => {
+  const getWeekSessions = useCallback(() => {
     const weekAgo = new Date();
     weekAgo.setDate(weekAgo.getDate() - 7);
     return sessions.filter(s => new Date(s.date) >= weekAgo);
-  };
-  
-  // Fonction pour recharger les données depuis localStorage
-  const reloadData = useCallback(() => {
-    console.log('🔄 Reloading study data from localStorage');
-    const loadedSessions = getStudySessions();
-    const loadedTasks = getTasks();
-    setSessions(loadedSessions);
-    setTasks(loadedTasks);
-    updateStats(loadedSessions);
-  }, []);
-  
-  const addMultipleSessions = useCallback((sessionsArray) => {
-    const allSessions = getStudySessions();
-    const newSessions = sessionsArray.map(sessionData => {
-      // S'assurer que subject est bien une string
-      let subject = 'Session de travail';
-      if (sessionData.subject) {
-        if (typeof sessionData.subject === 'string') {
-          subject = sessionData.subject;
-        } else if (typeof sessionData.subject === 'object' && sessionData.subject.name) {
-          subject = sessionData.subject.name;
-        }
-      }
-      
-      return {
-        id: sessionData.id || `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        date: sessionData.date,
-        subject: subject,
-        description: sessionData.description || '',
-        duration: sessionData.duration || 0
-      };
-    });
-    
-    const updatedSessions = [...allSessions, ...newSessions];
-    localStorage.setItem('studySessions', JSON.stringify(updatedSessions));
-    
-    setSessions(updatedSessions);
-    updateStats(updatedSessions);
-    
-    return newSessions.length;
-  }, []);
+  }, [sessions]);
 
   return {
     sessions,
@@ -158,13 +147,13 @@ const useStudyData = () => {
     stats,
     addSession,
     addMultipleSessions,
+    deleteSession,
     addTask,
     toggleTaskComplete,
     removeTask,
     getTodaySessions,
     getWeekSessions,
-    deleteSession,
-    reloadData  // Nouvelle fonction exportée
+    reloadData
   };
 };
 

@@ -1,157 +1,226 @@
-# StudyFlow - Application de Gestion d'Études
+# StudyFlow – Application de Gestion d'Études
 
-Application moderne et élégante pour gérer vos sessions d'étude, avec timer Pomodoro, planning hebdomadaire et analyses statistiques.
+StudyFlow est une application web moderne conçue pour **optimiser l'organisation, la concentration et le suivi des études**. Elle combine un **timer intelligent**, un **planning automatique**, un **suivi statistique avancé** et une **gestion de tâches**, le tout avec une interface élégante et fluide.
 
-## Fonctionnalités
+---
 
--  **Timer Pomodoro** : Focus de 25 minutes avec pauses personnalisables
-- **Planning hebdomadaire** : Organisez vos sessions d'étude
-- **Analyses détaillées** : Graphiques et statistiques de vos progrès
-- **Liste de tâches** : Gérez vos objectifs quotidiens
-- **Notifications** : Alertes de fin de session
-- **Sauvegarde locale** : Toutes vos données sont stockées localement
+## Vision du projet
 
-## Installation et Démarrage
+L'objectif de StudyFlow est de fournir un **outil tout-en-un pour les étudiants**, permettant :
 
-### Prérequis
-- Node.js (version 16 ou supérieure)
-- npm ou yarn
+* de mieux se concentrer (Pomodoro & sessions personnalisées),
+* de planifier intelligemment son temps,
+* d'analyser ses efforts réels,
+* de progresser de manière mesurable et motivante.
 
-### Étapes d'installation
+Toutes les données sont stockées **localement**, garantissant simplicité, rapidité et respect de la vie privée.
 
-1. **Ouvrez le terminal dans le dossier du projet**
-   ```bash
-   cd mon-app-etudes
-   ```
+---
 
-2. **Installez les dépendances** (si pas déjà fait)
-   ```bash
-   npm install
-   ```
+## Fonctionnalités principales
 
-3. **Lancez le serveur de développement**
-   ```bash
-   npm run dev
-   ```
+### Timer intelligent
 
-4. **Ouvrez votre navigateur**
-   - L'application sera disponible sur `http://localhost:5173`
-   - Le terminal vous montrera l'URL exacte
+* Pomodoro (25 min)
+* Pause courte / longue
+* Durée personnalisée (1 à 120 min)
+* Barre de progression circulaire animée
+* Pause, reprise, réinitialisation
+* Sauvegarde automatique des sessions
+* Sons de notification (travail / pause)
 
-## Structure du Projet
+### Enregistrement guidé des sessions
+
+* Modal de fin de session
+* Choix de la matière étudiée
+* Enchaînement intelligent (continuer / pause)
+
+### Planning automatique
+
+* Assistant pas à pas (wizard)
+* Répartition intelligente des matières
+* Respect :
+
+  * des jours disponibles
+  * des horaires
+  * du nombre de matières par jour
+  * d'une durée max de 2h par session
+* Alerte si tout ne peut pas être planifié
+
+### Analyses & statistiques avancées
+
+* Temps total étudié
+* Moyenne journalière
+* Répartition par matière
+* Graphiques par jour de la semaine
+* Comparaison semaine actuelle / précédente
+* Streak de jours consécutifs
+* Objectifs recommandés automatiquement
+
+### Gestion des tâches
+
+* Ajout de tâches avec matière optionnelle
+* Statut à faire / terminé
+* Suppression fluide
+* Persistance locale
+
+### Interface moderne
+
+* Thème clair / sombre
+* Animations douces
+* Design responsive
+* UX pensée pour la concentration
+
+---
+
+## Architecture technique
+
+### Stack
+
+* **React 18**
+* **Vite** (build ultra-rapide)
+* **Tailwind CSS** (design system)
+* **React Router** (navigation)
+* **Recharts** (graphiques)
+* **Lucide React** (icônes)
+* **date-fns** (dates en français)
+
+---
+
+### Structure du projet
 
 ```
 mon-app-etudes/
 ├── src/
-├── contexts/
-│   ├── ModalContext.jsx
-│   └── TimerContext.jsx 
-│   ├── components/        # Composants réutilisables
+│   ├── components/        # Composants UI
 │   │   ├── Navbar.jsx
 │   │   ├── Timer.jsx
 │   │   ├── TodoList.jsx
 │   │   ├── StatCard.jsx
 │   │   └── StudySession.jsx
-│   ├── pages/            # Pages principales
+│   │
+│   ├── pages/             # Pages principales
 │   │   ├── Dashboard.jsx
 │   │   ├── Planning.jsx
-│   │   └── Analytics.jsx
-│   ├── hooks/            # Hooks personnalisés
+│   │   ├── Analytics.jsx
+│   │   ├── Cours.jsx
+│   │   └── Links.jsx
+│   │
+│   ├── contexts/          # Context API
+│   │   ├── TimerContext.jsx
+│   │   └── ModalContext.jsx
+│   │
+│   ├── hooks/             # Hooks personnalisés
 │   │   ├── useTimer.js
 │   │   ├── useStudyData.js
+│   │   ├── useTheme.js
 │   │   └── useNotification.js
-│   ├── utils/            # Fonctions utilitaires
-│   │   ├── storage.js
+│   │
+│   ├── utils/             # Logique métier
 │   │   ├── dateHelpers.js
-│   │   └── calculations.js
-│   ├── App.jsx           # Composant principal
-│   ├── main.jsx          # Point d'entrée
-│   └── index.css         # Styles globaux
-└── package.json
+│   │   ├── planningGenerator.js
+│   │   ├── calculations.js
+│   │   └── storage.js
+│   │
+│   ├── App.jsx
+│   ├── main.jsx
+│   └── index.css
+│
+├── public/
+│   ├── ding.wav
+│   ├── notification.mp3
+│   └── break.mp3
+│
+├── package.json
+└── README.md
 ```
-
-## Technologies Utilisées
-
-- **React** : Framework JavaScript
-- **Vite** : Build tool ultra-rapide
-- **Tailwind CSS** : Framework CSS utilitaire
-- **React Router** : Navigation entre pages
-- **Recharts** : Bibliothèque de graphiques
-- **Lucide React** : Icônes modernes
-- **date-fns** : Manipulation de dates
-
-## Utilisation
-
-### Timer Pomodoro
-1. Choisissez un mode (Focus 25min, Pause courte 5min, Pause longue 15min)
-2. Cliquez sur "Démarrer"
-3. À la fin, enregistrez votre session avec la matière étudiée
-
-### Planning
-1. Naviguez entre les semaines avec les flèches
-2. Cliquez sur "Ajouter" pour planifier une session
-3. Visualisez vos sessions prévues et réalisées
-
-### Analyses
-1. Consultez vos statistiques globales
-2. Analysez le temps par matière avec les graphiques
-3. Identifiez vos jours les plus productifs
-
-## Commandes Disponibles
-
-```bash
-# Démarrer le serveur de développement
-npm run dev
-
-# Compiler pour la production
-npm run build
-
-# Prévisualiser la version de production
-npm run preview
-```
-
-## 📝 Personnalisation
-
-### Ajouter une nouvelle matière
-Les matières sont automatiquement créées quand vous enregistrez une session. Tapez simplement le nom de votre matière.
-
-### Modifier les durées du timer
-Dans `src/components/Timer.jsx`, modifiez l'objet `modes` pour changer les durées par défaut.
-
-### Changer les couleurs
-Les couleurs sont définies dans `tailwind.config.js`. Vous pouvez personnaliser les couleurs primaires et secondaires.
-
-## Résolution de Problèmes
-
-### L'application ne se lance pas
-- Vérifiez que Node.js est installé : `node --version`
-- Réinstallez les dépendances : `rm -rf node_modules && npm install`
-
-### Les notifications ne fonctionnent pas
-- Autorisez les notifications dans les paramètres de votre navigateur
-- Cliquez sur "Autoriser" quand le navigateur vous le demande
-
-### Les données ne se sauvegardent pas
-- Vérifiez que le localStorage est activé dans votre navigateur
-- Ne pas utiliser le mode navigation privée
-
-## Prochaines Fonctionnalités (À Venir)
-
-- [ ] Mode sombre
-- [ ] Export des données en PDF
-- [ ] Objectifs hebdomadaires personnalisables
-- [ ] Sons de notification personnalisables
-- [ ] Synchronisation cloud (optionnelle)
-- [ ] Application mobile
-
-## 📄 Licence
-
-Ce projet est libre d'utilisation pour un usage personnel et éducatif.
-
-## 🤝 Contribution
-
-N'hésitez pas à proposer des améliorations ou à signaler des bugs !
 
 ---
 
-**Bonne étude ! 🎓✨**
+## Concepts clés implémentés
+
+* **Séparation claire UI / logique / données**
+* **Context API** pour le timer et les modals
+* **Hooks métier réutilisables**
+* **Génération algorithmique de planning**
+* **Calculs statistiques dynamiques**
+* **Gestion robuste du localStorage**
+* **Design system Tailwind personnalisé**
+
+---
+
+## Installation & démarrage
+
+### Prérequis
+
+* Node.js ≥ 16
+* npm ou yarn
+
+### Installation
+
+```bash
+npm install
+```
+
+### Lancement
+
+```bash
+npm run dev
+```
+
+Application accessible sur :
+
+```
+http://localhost:5173
+```
+
+---
+
+## Personnalisation
+
+### Modifier les durées du timer
+
+`TimerContext.jsx` → objet `modes`
+
+### Thème & couleurs
+
+`tailwind.config.js` et `index.css`
+
+### Matières
+
+Créées automatiquement lors de l'enregistrement des sessions
+
+---
+
+## Données & confidentialité
+
+* Aucune base de données
+* Aucune API externe
+* Données stockées uniquement en **localStorage**
+
+---
+
+## Améliorations possibles
+
+* [ ] Export PDF / CSV
+* [ ] Authentification optionnelle
+* [ ] Synchronisation cloud
+* [ ] Notifications système avancées
+* [ ] Application mobile
+* [ ] Gamification (badges, niveaux)
+
+---
+
+## Licence
+
+Projet libre pour usage personnel et éducatif.
+
+---
+
+## Contribution
+
+Les idées, feedbacks et améliorations sont les bienvenus
+
+---
+
+**Bonne étude et bon focus**

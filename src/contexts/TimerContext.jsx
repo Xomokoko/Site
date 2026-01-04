@@ -16,7 +16,7 @@ export const useTimerContext = () => {
 
 export const TimerProvider = ({ children }) => {
   const [timerMode, setTimerMode] = useState('pomodoro');
-  const [customMinutes, setCustomMinutes] = useState(50);
+  const [customMinutes, setCustomMinutes] = useState(5);
   const { openSubjectModal } = useModal();
 
   const modes = {
@@ -89,9 +89,10 @@ export const TimerProvider = ({ children }) => {
     const minutesElapsed = timer.reset(currentMode.minutes, true);
     
     if (minutesElapsed > 0 && (timerMode === 'pomodoro' || timerMode === 'custom')) {
-      console.log('Reset timer - saving', minutesElapsed, 'minutes');
-      handleSessionComplete(minutesElapsed, 'Session de travail');
+      console.log('Reset timer - asking subject for', minutesElapsed, 'minutes');
+      openSubjectModal(minutesElapsed, handleSessionComplete);
     }
+
   };
 
   return (

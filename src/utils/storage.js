@@ -91,5 +91,27 @@ export const clearAllData = () => {
     localStorage.removeItem(key);
   });
 };
+export const saveLink = (link) => {
+  const links = loadData('links', []);
+  const clean = {
+    id: link.id || Date.now(),
+    name: String(link.name || ''),
+    url: String(link.url || '')
+  };
+  links.push(clean);
+  saveData('links', links);
+  return clean;
+};
+
+export const getLinks = () => {
+  return loadData('links', []);
+};
+
+export const deleteLink = (linkId) => {
+  const links = getLinks();
+  const filtered = links.filter(l => l.id !== linkId);
+  saveData('links', filtered);
+};
+
 
 export { STORAGE_KEYS };
