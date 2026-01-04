@@ -16,7 +16,7 @@ export const useTimerContext = () => {
 
 export const TimerProvider = ({ children }) => {
   const [timerMode, setTimerMode] = useState('pomodoro');
-  const [customMinutes, setCustomMinutes] = useState(5);
+  const [customMinutes, setCustomMinutes] = useState(50);
   const { openSubjectModal } = useModal();
 
   const modes = {
