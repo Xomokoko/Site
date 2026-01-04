@@ -20,6 +20,7 @@ const Analytics = () => {
   const { sessions } = useStudyData();
   const [timeRange, setTimeRange] = useState('week');
   const [showMigrationButton, setShowMigrationButton] = useState(false);
+  const [nowTick, setNowTick] = useState(Date.now());
 
   useEffect(() => {
     const sessionsWithInvalidSubject = sessions.filter(
@@ -28,7 +29,7 @@ const Analytics = () => {
     setShowMigrationButton(sessionsWithInvalidSubject.length > 0);
 
     if (sessionsWithInvalidSubject.length > 0) {
-      console.log('⚠️ Sessions avec subject invalide:', sessionsWithInvalidSubject);
+      console.log('Sessions avec subject invalide:', sessionsWithInvalidSubject);
     }
   }, [sessions]);
 
@@ -89,6 +90,36 @@ const Analytics = () => {
     window.location.reload();
   };
 
+  useEffect(() => {
+    const computeNextMondayMidnight = () => {
+      const now = new Date();
+      const next = new Date(now);
+      next.setSeconds(0, 0);
+
+      const day = next.getDay();
+      const hours = next.getHours();
+      const minutes = next.getMinutes();
+      const minutesNow = hours * 60 + minutes;
+
+      let daysUntilMonday = day === 0 ? 1 : (8 - day) % 7;
+
+      if (day === 1 && minutesNow >= 0) {
+        daysUntilMonday = 7;
+      }
+
+      next.setDate(next.getDate() + daysUntilMonday);
+      next.setHours(0, 0, 0, 0);
+
+      return next.getTime();
+    };
+
+    const nextTs = computeNextMondayMidnight();
+    const delay = Math.max(0, nextTs - Date.now());
+    const t = setTimeout(() => setNowTick(Date.now()), delay + 50);
+
+    return () => clearTimeout(t);
+  }, [nowTick]);
+
   const filteredSessions = useMemo(() => {
     const now = new Date();
     const filterDate = new Date();
@@ -124,44 +155,23 @@ const Analytics = () => {
     temps: time
   }));
 
-  const [nowTick, setNowTick] = useState(Date.now());
-
-  useEffect(() => {
-    const computeNextMondayMidnight = () => {
-      const now = new Date();
-      const next = new Date(now);
-      next.setSeconds(0, 0);
-      next.setHours(0, 0, 0, 0);
-
-      const day = (next.getDay() + 6) % 7; // Lun=0 ... Dim=6
-      let daysUntilNextMonday = (7 - day) % 7;
-      if (daysUntilNextMonday === 0) daysUntilNextMonday = 7;
-
-      next.setDate(next.getDate() + daysUntilNextMonday);
-      next.setHours(0, 0, 0, 0);
-
-      return next.getTime();
-    };
-
-    const nextTs = computeNextMondayMidnight();
-    const delay = Math.max(0, nextTs - Date.now());
-    const t = setTimeout(() => setNowTick(Date.now()), delay + 50);
-
-    return () => clearTimeout(t);
-  }, [nowTick]);
-
   const dayData = useMemo(() => {
     const days = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 
-    const getWeekStartMonday = (date) => {
+    const getWeekStart = (date) => {
       const d = new Date(date);
-      d.setHours(0, 0, 0, 0);
-      const day = (d.getDay() + 6) % 7; // Lun=0 ... Dim=6
-      d.setDate(d.getDate() - day);
-      return d;
+      const day = d.getDay();
+
+      const daysToLastMonday = day === 0 ? 6 : day - 1;
+
+      const start = new Date(d);
+      start.setDate(start.getDate() - daysToLastMonday);
+      start.setHours(0, 0, 0, 0);
+
+      return start;
     };
 
-    const weekStart = getWeekStartMonday(new Date(nowTick));
+    const weekStart = getWeekStart(new Date(nowTick));
     const weekEnd = new Date(weekStart);
     weekEnd.setDate(weekEnd.getDate() + 7);
 
@@ -171,6 +181,7 @@ const Analytics = () => {
       const date = new Date(session.date);
       if (date < weekStart || date >= weekEnd) return;
 
+      // Convertir le jour en index du tableau (0=Lun, 1=Mar, ..., 6=Dim)
       const idx = (date.getDay() + 6) % 7;
       timeByDay[idx] += session.duration || 0;
     });
@@ -194,7 +205,7 @@ const Analytics = () => {
           {showMigrationButton && (
             <div className="mt-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 border-2 border-yellow-400 rounded-xl">
               <p className="text-yellow-800 dark:text-yellow-200 mb-3">
-                ⚠️ Des sessions ont des noms de matières invalides. Cliquez pour nettoyer et regrouper les matières
+                Des sessions ont des noms de matières invalides. Cliquez pour nettoyer et regrouper les matières
                 identiques.
               </p>
               <button
@@ -279,7 +290,11 @@ const Analytics = () => {
                   <Tooltip
                     formatter={(value) => [`${value} min`, 'Temps étudié']}
                     labelFormatter={(label) => `Matière: ${label}`}
-                    contentStyle={{ backgroundColor: 'white', border: '1px solid #ccc' }}
+                    contentStyle={{ 
+                      backgroundColor: 'var(--tooltip-bg, white)', 
+                      border: '1px solid #ccc',
+                      color: 'var(--tooltip-text, black)'
+                    }}
                   />
                   <Bar dataKey="temps" fill="#3b82f6" />
                 </BarChart>
@@ -297,7 +312,11 @@ const Analytics = () => {
                   <Tooltip
                     formatter={(value) => [`${value} min`, 'Temps étudié']}
                     labelFormatter={(label) => `Jour: ${label}`}
-                    contentStyle={{ backgroundColor: 'white', border: '1px solid #ccc' }}
+                    contentStyle={{ 
+                      backgroundColor: 'var(--tooltip-bg, white)', 
+                      border: '1px solid #ccc',
+                      color: 'var(--tooltip-text, black)'
+                    }}
                   />
                   <Bar dataKey="temps" fill="#8b5cf6" />
                 </BarChart>
