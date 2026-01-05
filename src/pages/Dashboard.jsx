@@ -1,40 +1,88 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Clock, Flame, BookOpen, Target, TrendingUp } from 'lucide-react';
 import Timer from '../components/Timer';
 import StatCard from '../components/StatCard';
 import TodoList from '../components/TodoList';
-import StudySession from '../components/StudySession';
 import useStudyData from '../hooks/useStudyData';
-import { formatDuration } from '../utils/dateHelpers';
+import { formatStudyTime } from '../utils/dateHelpers';
+
+const SETTINGS_KEY = 'etudes_settings';
+
+const loadShowBreakStats = () => {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    const parsed = raw ? JSON.parse(raw) : {};
+    return parsed?.showBreakStats !== false;
+  } catch {
+    return true;
+  }
+};
+
+const loadTimeUnitMode = () => {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    const parsed = raw ? JSON.parse(raw) : {};
+    return parsed?.timeUnitMode === 'minutes' ? 'minutes' : 'auto';
+  } catch {
+    return 'auto';
+  }
+};
 
 const Dashboard = () => {
-  const [refreshKey, setRefreshKey] = useState(0);
-  
+  const [settingsKey, setSettingsKey] = useState(0);
+
   const {
-    sessions,
     tasks,
     stats,
-    addSession,
     addTask,
     toggleTaskComplete,
     removeTask,
     getTodaySessions,
     getWeekSessions,
+    getWeekBreaks,
     reloadData
   } = useStudyData();
 
+  const showBreakStats = useMemo(() => loadShowBreakStats(), [settingsKey]);
+  useMemo(() => loadTimeUnitMode(), [settingsKey]);
+
   const todaySessions = getTodaySessions();
   const weekSessions = getWeekSessions();
+  const weekBreaks = getWeekBreaks();
+
   const todayTotal = todaySessions.reduce((sum, s) => sum + s.duration, 0);
+  const weekTotal = weekSessions.reduce((sum, s) => sum + s.duration, 0);
 
   useEffect(() => {
-    const handleSessionAdded = () => {
-      reloadData();
-    };
-    
+    const handleSessionAdded = () => reloadData();
+    const handleBreakAdded = () => reloadData();
+    const handleSettings = () => setSettingsKey((k) => k + 1);
+
     window.addEventListener('sessionAdded', handleSessionAdded);
-    return () => window.removeEventListener('sessionAdded', handleSessionAdded);
+    window.addEventListener('breakAdded', handleBreakAdded);
+    window.addEventListener('settingsUpdated', handleSettings);
+
+    return () => {
+      window.removeEventListener('sessionAdded', handleSessionAdded);
+      window.removeEventListener('breakAdded', handleBreakAdded);
+      window.removeEventListener('settingsUpdated', handleSettings);
+    };
   }, [reloadData]);
+
+  const cards = showBreakStats
+    ? [
+        { title: "Temps aujourd'hui", value: formatStudyTime(todayTotal), icon: Clock, color: 'blue' },
+        { title: 'Pauses (7 jours)', value: weekBreaks.length, icon: Target, color: 'cyan' },
+        { title: 'Série de jours', value: `${stats.streak} jours`, icon: Flame, color: 'amber' },
+        { title: 'Sessions totales', value: stats.sessionsCount, icon: BookOpen, color: 'purple' },
+        { title: 'Cette semaine', value: formatStudyTime(weekTotal), icon: TrendingUp, color: 'green' }
+      ]
+    : [
+        { title: "Temps aujourd'hui", value: formatStudyTime(todayTotal), icon: Clock, color: 'blue' },
+        { title: 'Série de jours', value: `${stats.streak} jours`, icon: Flame, color: 'amber' },
+        { title: 'Sessions totales', value: stats.sessionsCount, icon: BookOpen, color: 'purple' },
+        { title: 'Cette semaine', value: formatStudyTime(weekTotal), icon: TrendingUp, color: 'green' }
+      ];
 
   return (
     <div className="min-h-screen py-8 px-4 sm:px-6 lg:px-8">
@@ -43,35 +91,16 @@ const Dashboard = () => {
           <h1 className="text-4xl font-bold font-display mb-2 bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
             Tableau de bord
           </h1>
-          <p className="text-slate-600 dark:text-white">
-          </p>
+          <p className="text-slate-600 dark:text-white"></p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 animate-slide-up" style={{ animationDelay: '0.1s' }}>
-          <StatCard
-            title="Temps aujourd'hui"
-            value={formatDuration(todayTotal)}
-            icon={Clock}
-            color="blue"
-          />
-          <StatCard
-            title="Série de jours"
-            value={`${stats.streak} jours`}
-            icon={Flame}
-            color="amber"
-          />
-          <StatCard
-            title="Sessions totales"
-            value={stats.sessionsCount}
-            icon={BookOpen}
-            color="purple"
-          />
-          <StatCard
-            title="Cette semaine"
-            value={formatDuration(weekSessions.reduce((sum, s) => sum + s.duration, 0))}
-            icon={TrendingUp}
-            color="green"
-          />
+        <div
+          className={`grid grid-cols-1 md:grid-cols-2 ${showBreakStats ? 'lg:grid-cols-5' : 'lg:grid-cols-4'} gap-6 mb-8 animate-slide-up`}
+          style={{ animationDelay: '0.1s' }}
+        >
+          {cards.map((c) => (
+            <StatCard key={c.title} title={c.title} value={c.value} icon={c.icon} color={c.color} />
+          ))}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -81,9 +110,7 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* Sidebar */}
           <div className="space-y-6">
-            {/* Todo List */}
             <div className="animate-slide-up" style={{ animationDelay: '0.4s' }}>
               <TodoList
                 tasks={tasks}

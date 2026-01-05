@@ -1,8 +1,7 @@
-import { createContext, useContext } from 'react';
-import { useState, useEffect } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react';
 import useTimer from '../hooks/useTimer';
 import { useModal } from './ModalContext';
-import { saveStudySession } from '../utils/storage';
+import { saveStudySession, saveBreak } from '../utils/storage';
 
 const TimerContext = createContext();
 
@@ -14,93 +13,155 @@ export const useTimerContext = () => {
   return context;
 };
 
+const SETTINGS_KEY = 'etudes_settings';
+
+const DEFAULT_SETTINGS = {
+  askNextSessionPopup: true,
+  focusMinutes: 25,
+  soundsEnabled: true,
+  soundVolume: 0.5,
+  soundWork: '/BRUH.mp3',
+  soundBreak: '/ding.wav',
+  soundDone: '/notification.mp3'
+};
+
+const loadSettings = () => {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    const parsed = raw ? JSON.parse(raw) : {};
+    return { ...DEFAULT_SETTINGS, ...(parsed && typeof parsed === 'object' ? parsed : {}) };
+  } catch {
+    return { ...DEFAULT_SETTINGS };
+  }
+};
+
+const playBreakSound = () => {
+  const s = loadSettings();
+  if (!s.soundsEnabled) return;
+  try {
+    const audio = new Audio('/ding.wav');
+    audio.volume = Number(s.soundVolume ?? 0.5);
+    audio.play().catch(() => {});
+  } catch {}
+};
+
 export const TimerProvider = ({ children }) => {
   const [timerMode, setTimerMode] = useState('pomodoro');
   const [customMinutes, setCustomMinutes] = useState(50);
+  const [focusMinutes, setFocusMinutes] = useState(() => loadSettings().focusMinutes);
+
   const { openSubjectModal } = useModal();
 
-  const modes = {
-    pomodoro: { minutes: 25, label: 'Focus', color: 'bg-slate-900' },
-    shortBreak: { minutes: 5, label: 'Pause courte', color: 'bg-slate-900' },
-    longBreak: { minutes: 10, label: 'Pause longue', color: 'bg-slate-900' },
-    custom: { minutes: customMinutes, label: 'Personnalisé', color: 'bg-slate-900' }
-  };
+  const modes = useMemo(
+    () => ({
+      pomodoro: { minutes: focusMinutes, label: 'Focus', color: 'bg-slate-900' },
+      shortBreak: { minutes: 5, label: 'Pause courte', color: 'bg-slate-900' },
+      longBreak: { minutes: 10, label: 'Pause longue', color: 'bg-slate-900' },
+      custom: { minutes: customMinutes, label: 'Personnalisé', color: 'bg-slate-900' }
+    }),
+    [focusMinutes, customMinutes]
+  );
 
   const currentMode = modes[timerMode];
 
-  const handleSessionComplete = (duration, subject = 'Session de travail') => {
-    console.log('TimerContext: Saving session', duration, 'minutes, subject:', subject);
+  const handleSessionComplete = useCallback((duration, subject = 'Session de travail') => {
     const newSession = {
       id: `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       date: new Date().toISOString(),
-      subject: subject,
+      subject,
       description: '',
-      duration: duration
+      duration
     };
-    saveStudySession(newSession);
-    
-    // Déclencher un événement pour que le Dashboard se mette à jour
-    window.dispatchEvent(new Event('sessionAdded'));
-    
-    // Note: Le ModalContext ouvre automatiquement le deuxième modal dans handleSubjectSubmit
-  };
 
-  const handleComplete = (actualDuration) => {
-    console.log('Timer completed with duration:', actualDuration, 'minutes, mode:', timerMode);
-    
-    // Pour les pauses, jouer le son ding.wav
-    if (timerMode === 'shortBreak' || timerMode === 'longBreak') {
-      console.log('Break timer completed - playing ding.wav');
-      try {
-        const audio = new Audio('/ding.wav');
-        audio.play().catch(err => console.log('Erreur lecture audio:', err));
-      } catch (err) {
-        console.log('Erreur création audio:', err);
+    saveStudySession(newSession);
+    window.dispatchEvent(new Event('sessionAdded'));
+  }, []);
+
+  const handleComplete = useCallback(
+    (actualDuration) => {
+      if (timerMode === 'shortBreak' || timerMode === 'longBreak') {
+        saveBreak({
+          date: new Date().toISOString(),
+          type: timerMode,
+          duration: actualDuration
+        });
+        window.dispatchEvent(new Event('breakAdded'));
+        playBreakSound();
+        return;
       }
-      return;
-    }
-    
-    // Pour tous les autres modes (pomodoro et custom), on affiche le modal
-    console.log('Work timer completed - showing subject modal');
-    openSubjectModal(actualDuration, handleSessionComplete);
-  };
+
+      openSubjectModal(actualDuration, handleSessionComplete);
+    },
+    [timerMode, openSubjectModal, handleSessionComplete]
+  );
 
   const timer = useTimer(currentMode.minutes, handleComplete);
 
-  const handleModeChange = (mode) => {
-    if (timer.isRunning || timer.isPaused) {
-      alert('Arrêtez le timer avant de changer de mode');
+  useEffect(() => {
+    const syncFromSettings = () => {
+      const next = loadSettings();
+      const nextFocus = Number(next.focusMinutes || 25);
+      setFocusMinutes(nextFocus);
+
+      if (timerMode === 'pomodoro' && !timer.isRunning && !timer.isPaused) {
+        timer.reset(nextFocus, false);
+      }
+    };
+
+    syncFromSettings();
+    window.addEventListener('settingsUpdated', syncFromSettings);
+    return () => window.removeEventListener('settingsUpdated', syncFromSettings);
+  }, [timerMode, timer.isRunning, timer.isPaused, timer.reset]);
+
+  const handleModeChange = useCallback(
+    (mode) => {
+      if (timer.isRunning || timer.isPaused) {
+        alert('Arrêtez le timer avant de changer de mode');
+        return;
+      }
+      setTimerMode(mode);
+      timer.reset(modes[mode].minutes, false);
+    },
+    [timer.isRunning, timer.isPaused, timer.reset, modes]
+  );
+
+  const adjustCustomTime = useCallback(
+    (delta) => {
+      if (timer.isRunning || timer.isPaused) return;
+      const newMinutes = Math.max(1, Math.min(120, customMinutes + delta));
+      setCustomMinutes(newMinutes);
+      if (timerMode === 'custom') {
+        timer.reset(newMinutes, false);
+      }
+    },
+    [timer.isRunning, timer.isPaused, customMinutes, timerMode, timer.reset]
+  );
+
+  const handleReset = useCallback(() => {
+    const minutesElapsed = timer.reset(currentMode.minutes, true);
+
+    if (minutesElapsed > 0 && (timerMode === 'shortBreak' || timerMode === 'longBreak')) {
+      saveBreak({
+        date: new Date().toISOString(),
+        type: timerMode,
+        duration: minutesElapsed
+      });
+      window.dispatchEvent(new Event('breakAdded'));
       return;
     }
-    setTimerMode(mode);
-    timer.reset(modes[mode].minutes, false);
-  };
 
-  const adjustCustomTime = (delta) => {
-    if (timer.isRunning || timer.isPaused) return;
-    const newMinutes = Math.max(1, Math.min(120, customMinutes + delta));
-    setCustomMinutes(newMinutes);
-    if (timerMode === 'custom') {
-      timer.reset(newMinutes, false);
-    }
-  };
-
-  const handleReset = () => {
-    const minutesElapsed = timer.reset(currentMode.minutes, true);
-    
     if (minutesElapsed > 0 && (timerMode === 'pomodoro' || timerMode === 'custom')) {
-      console.log('Reset timer - asking subject for', minutesElapsed, 'minutes');
       openSubjectModal(minutesElapsed, handleSessionComplete);
     }
-
-  };
+  }, [timer, currentMode.minutes, timerMode, openSubjectModal, handleSessionComplete]);
 
   return (
-    <TimerContext.Provider 
+    <TimerContext.Provider
       value={{
         ...timer,
         timerMode,
         customMinutes,
+        focusMinutes,
         modes,
         currentMode,
         handleModeChange,

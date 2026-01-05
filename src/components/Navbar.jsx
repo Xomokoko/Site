@@ -1,6 +1,8 @@
 import { Link, useLocation } from 'react-router-dom';
 import { Home, Calendar, BarChart3, ExternalLink, List, Moon, Sun, Binary } from 'lucide-react';
 import useTheme from "../hooks/useTheme";
+import { Settings as SettingsIcon } from 'lucide-react';
+
 
 const Navbar = () => {
   const location = useLocation();
@@ -12,6 +14,8 @@ const Navbar = () => {
     { path: '/analytics', icon: BarChart3, label: 'Analyses' },
     { path: '/cours', icon: List, label: 'Cours' },
     { path: '/link', icon: ExternalLink, label: 'Liens' },
+    { path: '/settings', icon: SettingsIcon, label: 'Paramètres' },
+
   ];
 
   return (

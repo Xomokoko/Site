@@ -5,44 +5,57 @@ import {
   saveTask,
   getTasks,
   updateTask as updateTaskStorage,
-  deleteTask
+  deleteTask,
+  getBreaks
 } from '../utils/storage';
 
 const useStudyData = () => {
   const [sessions, setSessions] = useState([]);
+  const [breaks, setBreaks] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [stats, setStats] = useState({
     totalTime: 0,
     sessionsCount: 0,
     streak: 0,
-    averageTime: 0
+    averageTime: 0,
+    breaksCount: 0,
+    breaksTime: 0
   });
 
-  const updateStats = useCallback((sessionList) => {
+  const updateStats = useCallback((sessionList, breakList) => {
     const totalTime = sessionList.reduce((sum, s) => sum + (s.duration || 0), 0);
     const sessionsCount = sessionList.length;
     const averageTime = sessionsCount > 0 ? Math.round(totalTime / sessionsCount) : 0;
 
-    const uniqueDays = new Set(sessionList.map(s => new Date(s.date).toDateString()));
+    const uniqueDays = new Set(sessionList.map((s) => new Date(s.date).toDateString()));
     const streak = uniqueDays.size;
 
-    setStats({ totalTime, sessionsCount, streak, averageTime });
+    const breaksCount = (breakList || []).length;
+    const breaksTime = (breakList || []).reduce((sum, b) => sum + (b.duration || 0), 0);
+
+    setStats({ totalTime, sessionsCount, streak, averageTime, breaksCount, breaksTime });
   }, []);
 
   useEffect(() => {
     const loadedSessions = getStudySessions();
     const loadedTasks = getTasks();
+    const loadedBreaks = getBreaks();
+
     setSessions(loadedSessions);
     setTasks(loadedTasks);
-    updateStats(loadedSessions);
+    setBreaks(loadedBreaks);
+    updateStats(loadedSessions, loadedBreaks);
   }, [updateStats]);
 
   const reloadData = useCallback(() => {
     const loadedSessions = getStudySessions();
     const loadedTasks = getTasks();
+    const loadedBreaks = getBreaks();
+
     setSessions(loadedSessions);
     setTasks(loadedTasks);
-    updateStats(loadedSessions);
+    setBreaks(loadedBreaks);
+    updateStats(loadedSessions, loadedBreaks);
   }, [updateStats]);
 
   const addSession = useCallback((sessionData) => {
@@ -57,13 +70,17 @@ const useStudyData = () => {
       date: sessionData.date || new Date().toISOString(),
       subject,
       description: sessionData.description || '',
-      duration: Number(sessionData.duration || 0)
+      duration: Number(sessionData.duration || 0),
+      startTime: sessionData.startTime
     };
 
     saveStudySession(newSession);
     const updated = [...sessions, newSession];
     setSessions(updated);
-    updateStats(updated);
+
+    const currentBreaks = getBreaks();
+    setBreaks(currentBreaks);
+    updateStats(updated, currentBreaks);
   }, [sessions, updateStats]);
 
   const addMultipleSessions = useCallback((sessionsArray) => {
@@ -89,17 +106,23 @@ const useStudyData = () => {
     const updated = [...all, ...newSessions];
     localStorage.setItem('studySessions', JSON.stringify(updated));
     setSessions(updated);
-    updateStats(updated);
+
+    const currentBreaks = getBreaks();
+    setBreaks(currentBreaks);
+    updateStats(updated, currentBreaks);
 
     return newSessions.length;
   }, [updateStats]);
 
   const deleteSession = useCallback((sessionId) => {
     const all = getStudySessions();
-    const filtered = all.filter(s => s.id !== sessionId);
+    const filtered = all.filter((s) => s.id !== sessionId);
     localStorage.setItem('studySessions', JSON.stringify(filtered));
     setSessions(filtered);
-    updateStats(filtered);
+
+    const currentBreaks = getBreaks();
+    setBreaks(currentBreaks);
+    updateStats(filtered, currentBreaks);
   }, [updateStats]);
 
   const addTask = useCallback((taskData) => {
@@ -110,39 +133,51 @@ const useStudyData = () => {
       ...taskData
     };
     saveTask(newTask);
-    setTasks(prev => [...prev, newTask]);
+    setTasks((prev) => [...prev, newTask]);
   }, []);
 
   const toggleTaskComplete = useCallback((taskId) => {
-    setTasks(prev => {
-      const updated = prev.map(t =>
+    setTasks((prev) => {
+      const updated = prev.map((t) =>
         t.id === taskId
           ? { ...t, completed: !t.completed, completedAt: !t.completed ? new Date().toISOString() : null }
           : t
       );
-      updated.forEach(t => updateTaskStorage(t.id, t));
+      updated.forEach((t) => updateTaskStorage(t.id, t));
       return updated;
     });
   }, []);
 
   const removeTask = useCallback((taskId) => {
     deleteTask(taskId);
-    setTasks(prev => prev.filter(t => t.id !== taskId));
+    setTasks((prev) => prev.filter((t) => t.id !== taskId));
   }, []);
 
   const getTodaySessions = useCallback(() => {
     const today = new Date().toDateString();
-    return sessions.filter(s => new Date(s.date).toDateString() === today);
+    return sessions.filter((s) => new Date(s.date).toDateString() === today);
   }, [sessions]);
 
   const getWeekSessions = useCallback(() => {
     const weekAgo = new Date();
     weekAgo.setDate(weekAgo.getDate() - 7);
-    return sessions.filter(s => new Date(s.date) >= weekAgo);
+    return sessions.filter((s) => new Date(s.date) >= weekAgo);
   }, [sessions]);
+
+  const getTodayBreaks = useCallback(() => {
+    const today = new Date().toDateString();
+    return breaks.filter((b) => new Date(b.date).toDateString() === today);
+  }, [breaks]);
+
+  const getWeekBreaks = useCallback(() => {
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    return breaks.filter((b) => new Date(b.date) >= weekAgo);
+  }, [breaks]);
 
   return {
     sessions,
+    breaks,
     tasks,
     stats,
     addSession,
@@ -153,6 +188,8 @@ const useStudyData = () => {
     removeTask,
     getTodaySessions,
     getWeekSessions,
+    getTodayBreaks,
+    getWeekBreaks,
     reloadData
   };
 };

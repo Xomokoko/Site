@@ -7,6 +7,8 @@ import Planning from './pages/Planning';
 import Analytics from './pages/Analytics';
 import Links from './pages/Links';
 import Cours from './pages/Cours';
+import Settings from './pages/Settings';
+
 
 
 function App() {
@@ -22,6 +24,8 @@ function App() {
               <Route path="/analytics" element={<Analytics />} />
               <Route path="/link" element={<Links />} />
               <Route path="/Cours" element={<Cours />} />
+              <Route path="/settings" element={<Settings />} />
+
             </Routes>
           </div>
         </TimerProvider>

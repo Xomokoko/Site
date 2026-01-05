@@ -1,5 +1,4 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
-
 import { createPortal } from 'react-dom';
 
 const ModalContext = createContext();
@@ -13,6 +12,44 @@ export const useModal = () => {
 };
 
 const COURSES_KEY = 'etudes_courses';
+const SETTINGS_KEY = 'etudes_settings';
+
+const DEFAULT_SETTINGS = {
+  askNextSessionPopup: true,
+  focusMinutes: 25,
+
+  soundsEnabled: true,
+  soundVolume: 0.5,
+  soundWork: '/BRUH.mp3',
+  soundBreak: '/ding.wav',
+  soundDone: '/notification.mp3'
+};
+
+const loadSettings = () => {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    const parsed = raw ? JSON.parse(raw) : {};
+    return { ...DEFAULT_SETTINGS, ...(parsed && typeof parsed === 'object' ? parsed : {}) };
+  } catch {
+    return { ...DEFAULT_SETTINGS };
+  }
+};
+
+const playSoundFromSettings = (type) => {
+  const s = loadSettings();
+  if (!s.soundsEnabled) return;
+
+  const file =
+    type === 'work' ? s.soundWork :
+    type === 'break' ? s.soundBreak :
+    s.soundDone;
+
+  try {
+    const audio = new Audio(file);
+    audio.volume = Number(s.soundVolume ?? 0.5);
+    audio.play().catch(() => {});
+  } catch {}
+};
 
 const loadFavoriteCourseNames = () => {
   try {
@@ -51,10 +88,8 @@ export const ModalProvider = ({ children }) => {
   const favoriteOptions = useMemo(() => favoriteCourses, [favoriteCourses]);
 
   const openSubjectModal = (duration, callback) => {
-    try {
-      const audio = new Audio('/ding.wav');
-      audio.play().catch(() => {});
-    } catch {}
+    // ✅ Son "Done" (fin de session de travail)
+    playSoundFromSettings('done');
 
     refreshFavorites();
 
@@ -73,17 +108,17 @@ export const ModalProvider = ({ children }) => {
     setShowSubjectModal(false);
     setSessionSubject('');
     setSelectedFavorite('');
+
+    // On garde le flux existant (2e modal)
     setTimeout(() => {
       setShowSessionTypeModal(true);
     }, 100);
   };
 
   const handleSessionTypeChoice = (isWorkSession) => {
-    try {
-      const soundFile = isWorkSession ? '/BRUH.mp3' : '/notification.mp3';
-      const audio = new Audio(soundFile);
-      audio.play().catch(() => {});
-    } catch {}
+    // ✅ Son "Work" ou "Break" selon le bouton
+    playSoundFromSettings(isWorkSession ? 'work' : 'break');
+
     setShowSessionTypeModal(false);
   };
 

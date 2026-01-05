@@ -1,10 +1,9 @@
-
-
 const STORAGE_KEYS = {
   STUDY_SESSIONS: 'studySessions',
   TASKS: 'tasks',
   SETTINGS: 'settings',
-  STATS: 'stats'
+  STATS: 'stats',
+  BREAKS: 'breaks'
 };
 
 export const saveData = (key, data) => {
@@ -29,7 +28,7 @@ export const loadData = (key, defaultValue = null) => {
 
 export const saveStudySession = (session) => {
   const sessions = loadData(STORAGE_KEYS.STUDY_SESSIONS, []);
-  
+
   const cleanSession = {
     id: session.id || Date.now(),
     date: session.date || new Date().toISOString(),
@@ -37,9 +36,7 @@ export const saveStudySession = (session) => {
     description: session.description || '',
     duration: Number(session.duration || 0)
   };
-  
-  console.log('💾 Saving to storage:', cleanSession);
-  
+
   sessions.push(cleanSession);
   saveData(STORAGE_KEYS.STUDY_SESSIONS, sessions);
   return cleanSession;
@@ -51,10 +48,29 @@ export const getStudySessions = () => {
 
 export const getSessionsByDateRange = (startDate, endDate) => {
   const sessions = getStudySessions();
-  return sessions.filter(session => {
+  return sessions.filter((session) => {
     const sessionDate = new Date(session.date);
     return sessionDate >= startDate && sessionDate <= endDate;
   });
+};
+
+export const saveBreak = (breakSession) => {
+  const breaks = loadData(STORAGE_KEYS.BREAKS, []);
+
+  const cleanBreak = {
+    id: breakSession.id || `break-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    date: breakSession.date || new Date().toISOString(),
+    type: String(breakSession.type || 'break'),
+    duration: Number(breakSession.duration || 0)
+  };
+
+  breaks.push(cleanBreak);
+  saveData(STORAGE_KEYS.BREAKS, breaks);
+  return cleanBreak;
+};
+
+export const getBreaks = () => {
+  return loadData(STORAGE_KEYS.BREAKS, []);
 };
 
 export const saveTask = (task) => {
@@ -74,7 +90,7 @@ export const getTasks = () => {
 
 export const updateTask = (taskId, updates) => {
   const tasks = getTasks();
-  const updatedTasks = tasks.map(task => 
+  const updatedTasks = tasks.map((task) =>
     task.id === taskId ? { ...task, ...updates } : task
   );
   saveData(STORAGE_KEYS.TASKS, updatedTasks);
@@ -82,15 +98,16 @@ export const updateTask = (taskId, updates) => {
 
 export const deleteTask = (taskId) => {
   const tasks = getTasks();
-  const filteredTasks = tasks.filter(task => task.id !== taskId);
+  const filteredTasks = tasks.filter((task) => task.id !== taskId);
   saveData(STORAGE_KEYS.TASKS, filteredTasks);
 };
 
 export const clearAllData = () => {
-  Object.values(STORAGE_KEYS).forEach(key => {
+  Object.values(STORAGE_KEYS).forEach((key) => {
     localStorage.removeItem(key);
   });
 };
+
 export const saveLink = (link) => {
   const links = loadData('links', []);
   const clean = {
@@ -109,9 +126,21 @@ export const getLinks = () => {
 
 export const deleteLink = (linkId) => {
   const links = getLinks();
-  const filtered = links.filter(l => l.id !== linkId);
+  const filtered = links.filter((l) => l.id !== linkId);
   saveData('links', filtered);
 };
 
+export const getSettings = () => {
+  return loadData(STORAGE_KEYS.SETTINGS, {
+    askNextSessionPopup: true
+  });
+};
+
+export const updateSettings = (updates) => {
+  const current = getSettings();
+  const next = { ...current, ...updates };
+  saveData(STORAGE_KEYS.SETTINGS, next);
+  return next;
+};
 
 export { STORAGE_KEYS };
