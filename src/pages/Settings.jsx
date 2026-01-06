@@ -124,21 +124,27 @@ const Settings = () => {
     return Array.from(set).sort((a, b) => a.localeCompare(b, 'fr'));
   }, [courses, sessions]);
 
-  const favoriteSubjects = useMemo(() => {
-    return (courses || [])
-      .filter((c) => c && c.favorite)
-      .map((c) => String(c?.name || '').trim())
-      .filter(Boolean)
-      .sort((a, b) => a.localeCompare(b, 'fr'));
-  }, [courses]);
+  const sessionSubjects = useMemo(() => {
+    const map = new Map();
+    (sessions || []).forEach((s) => {
+      const name = typeof s?.subject === 'string' ? s.subject.trim() : '';
+      if (!name) return;
+      const dur = Number(s?.duration || 0);
+      map.set(name, (map.get(name) || 0) + dur);
+    });
+
+    return Array.from(map.entries())
+      .sort((a, b) => (b[1] || 0) - (a[1] || 0))
+      .map(([name]) => name);
+  }, [sessions]);
 
   useEffect(() => {
-    if (!renameFrom && favoriteSubjects.length > 0) setRenameFrom(favoriteSubjects[0]);
-    if (renameFrom && favoriteSubjects.length > 0 && !favoriteSubjects.includes(renameFrom)) {
-      setRenameFrom(favoriteSubjects[0]);
+    if (!renameFrom && sessionSubjects.length > 0) setRenameFrom(sessionSubjects[0]);
+    if (renameFrom && sessionSubjects.length > 0 && !sessionSubjects.includes(renameFrom)) {
+      setRenameFrom(sessionSubjects[0]);
     }
-    if (favoriteSubjects.length === 0) setRenameFrom('');
-  }, [favoriteSubjects, renameFrom]);
+    if (sessionSubjects.length === 0) setRenameFrom('');
+  }, [sessionSubjects, renameFrom]);
 
   const courseColorMap = useMemo(() => {
     const map = {};
@@ -194,8 +200,8 @@ const Settings = () => {
       setRenameErr('Choisis une matière à renommer.');
       return;
     }
-    if (!favoriteSubjects.includes(from)) {
-      setRenameErr('Seules les matières favorites ⭐ peuvent être renommées.');
+    if (!sessionSubjects.includes(from)) {
+      setRenameErr('Cette matière ne fait pas partie des données du diagramme.');
       return;
     }
     if (!to) {
@@ -237,7 +243,10 @@ const Settings = () => {
       const chaptersTo = Array.isArray(cTo?.chapters) ? cTo.chapters : [];
 
       const mergedChapters = [...chaptersTo];
-      const existingTitles = new Set(chaptersTo.map((ch) => String(ch?.title || '').trim()).filter(Boolean));
+      const existingTitles = new Set(
+        chaptersTo.map((ch) => String(ch?.title || '').trim()).filter(Boolean)
+      );
+
       chaptersFrom.forEach((ch) => {
         const t = String(ch?.title || '').trim();
         if (!t) return;
@@ -288,9 +297,7 @@ const Settings = () => {
                 <div className="text-lg font-semibold text-slate-800 dark:text-white">
                   Popup “Pause ou session ?”
                 </div>
-                <div className="text-slate-600 dark:text-slate-300">
-                  Demander quoi faire après une session
-                </div>
+
               </div>
 
               <ToggleSwitch
@@ -308,9 +315,6 @@ const Settings = () => {
               <div>
                 <div className="text-lg font-semibold text-slate-800 dark:text-white">
                   Durée du Focus (Pomodoro)
-                </div>
-                <div className="text-slate-600 dark:text-slate-300">
-                  Change la durée du mode Focus
                 </div>
               </div>
 
@@ -491,7 +495,7 @@ const Settings = () => {
                   Affichage du temps en heures
                 </div>
                 <div className="text-slate-600 dark:text-slate-300">
-                  Afficher automatiquement en heures (ex: 2h10) au lieu de minutes
+                  Afficher automatiquement en heures
                 </div>
               </div>
 
@@ -574,12 +578,15 @@ const Settings = () => {
                 <div className="text-lg font-semibold text-slate-800 dark:text-white">
                   Renommer une matière
                 </div>
+                <div className="text-slate-600 dark:text-slate-300">
+                  Liste basée sur les matières présentes dans les sessions (diagramme Analyses)
+                </div>
               </div>
             </div>
 
-            {favoriteSubjects.length === 0 ? (
+            {sessionSubjects.length === 0 ? (
               <div className="text-sm text-slate-600 dark:text-slate-300">
-                Aucune matière favorite. Ajoute une ⭐ à un cours pour pouvoir le renommer ici.
+                Aucune matière dans l’historique pour le moment.
               </div>
             ) : (
               <div className="space-y-4">
@@ -597,7 +604,7 @@ const Settings = () => {
                         setRenameMsg('');
                       }}
                     >
-                      {favoriteSubjects.map((s) => (
+                      {sessionSubjects.map((s) => (
                         <option key={s} value={s}>
                           {s}
                         </option>
