@@ -105,6 +105,18 @@ const Cours = () => {
       )
     );
 
+  const toggleChapterDone = (courseId, chapterId) =>
+    setCourses((p) =>
+      p.map((c) =>
+        c.id !== courseId
+          ? c
+          : {
+              ...c,
+              chapters: c.chapters.map((ch) => (ch.id === chapterId ? { ...ch, done: !ch.done } : ch))
+            }
+      )
+    );
+
   const addChapter = (courseId) => {
     if (!newChapterTitle.trim()) return;
     setCourses((p) =>
@@ -139,7 +151,12 @@ const Cours = () => {
                     <button onClick={() => saveEditCourse(course.id)}>
                       <Check className="w-4 h-4 text-green-400" />
                     </button>
-                    <button onClick={() => setEditingCourseId(null)}>
+                    <button
+                      onClick={() => {
+                        setEditingCourseId(null);
+                        setEditingCourseName('');
+                      }}
+                    >
                       <X className="w-4 h-4 text-slate-400" />
                     </button>
                   </>
@@ -167,7 +184,7 @@ const Cours = () => {
               </div>
             </div>
 
-            <div className="mt-3 space-y-2 text-sm text-slate-300">
+            <div className="mt-3 space-y-2 text-sm text-slate-200">
               {course.chapters.map((ch) => {
                 const isEditing = editingChapter.courseId === course.id && editingChapter.chapterId === ch.id;
 
@@ -184,13 +201,27 @@ const Cours = () => {
                         <button onClick={() => saveEditChapter(course.id, ch.id)}>
                           <Check className="w-4 h-4 text-green-400" />
                         </button>
-                        <button onClick={() => setEditingChapter({ courseId: null, chapterId: null })}>
+                        <button
+                          onClick={() => {
+                            setEditingChapter({ courseId: null, chapterId: null });
+                            setEditingChapterTitle('');
+                          }}
+                        >
                           <X className="w-4 h-4 text-slate-400" />
                         </button>
                       </>
                     ) : (
                       <>
-                        <span className="flex-1 truncate">{ch.title}</span>
+                        <input
+                          type="checkbox"
+                          checked={!!ch.done}
+                          onChange={() => toggleChapterDone(course.id, ch.id)}
+                          className="w-4 h-4 rounded border-slate-400 bg-transparent accent-blue-500 cursor-pointer"
+                          title="Marquer comme fait"
+                        />
+                        <span className={`flex-1 truncate ${ch.done ? 'line-through text-slate-400' : ''}`}>
+                          {ch.title}
+                        </span>
 
                         <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button onClick={() => startEditChapter(course.id, ch)}>
@@ -214,11 +245,23 @@ const Cours = () => {
                     className="input-field !py-1 !px-2 !text-sm flex-1"
                     autoFocus
                     placeholder="Nouveau chapitre"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') addChapter(course.id);
+                      if (e.key === 'Escape') {
+                        setAddingChapterFor(null);
+                        setNewChapterTitle('');
+                      }
+                    }}
                   />
                   <button onClick={() => addChapter(course.id)}>
                     <Check className="w-4 h-4 text-green-400" />
                   </button>
-                  <button onClick={() => setAddingChapterFor(null)}>
+                  <button
+                    onClick={() => {
+                      setAddingChapterFor(null);
+                      setNewChapterTitle('');
+                    }}
+                  >
                     <X className="w-4 h-4 text-slate-400" />
                   </button>
                 </div>
@@ -252,9 +295,24 @@ const Cours = () => {
               onChange={(e) => setName(e.target.value)}
               className="input-field mb-3"
               placeholder="Nom du cours"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') createCourse();
+                if (e.key === 'Escape') {
+                  setShowForm(false);
+                  setName('');
+                }
+              }}
+              autoFocus
             />
             <div className="flex justify-end gap-2">
-              <button onClick={() => setShowForm(false)}>Annuler</button>
+              <button
+                onClick={() => {
+                  setShowForm(false);
+                  setName('');
+                }}
+              >
+                Annuler
+              </button>
               <button onClick={createCourse} className="btn-primary">
                 Créer
               </button>

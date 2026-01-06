@@ -29,7 +29,7 @@ const Navbar = () => {
               <Binary className="w-6 h-6 text-white" />
             </div>
             <span className="text-xl font-bold font-display bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-              Etudions Ensemble
+              Blocus
             </span>
           </Link>
 
