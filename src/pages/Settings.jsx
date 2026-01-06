@@ -314,7 +314,7 @@ const Settings = () => {
             <div className="flex items-center justify-between gap-4 mb-4">
               <div>
                 <div className="text-lg font-semibold text-slate-800 dark:text-white">
-                  Durée du Focus (Pomodoro)
+                  Durée du Focus
                 </div>
               </div>
 
