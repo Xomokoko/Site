@@ -14,43 +14,6 @@ export const useModal = () => {
 const COURSES_KEY = 'etudes_courses';
 const SETTINGS_KEY = 'etudes_settings';
 
-const DEFAULT_SETTINGS = {
-  askNextSessionPopup: true,
-  focusMinutes: 25,
-
-  soundsEnabled: true,
-  soundVolume: 0.5,
-  soundWork: '/BRUH.mp3',
-  soundBreak: '/ding.wav',
-  soundDone: '/notification.mp3'
-};
-
-const loadSettings = () => {
-  try {
-    const raw = localStorage.getItem(SETTINGS_KEY);
-    const parsed = raw ? JSON.parse(raw) : {};
-    return { ...DEFAULT_SETTINGS, ...(parsed && typeof parsed === 'object' ? parsed : {}) };
-  } catch {
-    return { ...DEFAULT_SETTINGS };
-  }
-};
-
-const playSoundFromSettings = (type) => {
-  const s = loadSettings();
-  if (!s.soundsEnabled) return;
-
-  const file =
-    type === 'work' ? s.soundWork :
-    type === 'break' ? s.soundBreak :
-    s.soundDone;
-
-  try {
-    const audio = new Audio(file);
-    audio.volume = Number(s.soundVolume ?? 0.5);
-    audio.play().catch(() => {});
-  } catch {}
-};
-
 const loadFavoriteCourseNames = () => {
   try {
     const raw = localStorage.getItem(COURSES_KEY);
@@ -65,6 +28,16 @@ const loadFavoriteCourseNames = () => {
   }
 };
 
+const loadAskNextSessionPopup = () => {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    const parsed = raw ? JSON.parse(raw) : {};
+    return parsed?.askNextSessionPopup !== false;
+  } catch {
+    return true;
+  }
+};
+
 export const ModalProvider = ({ children }) => {
   const [showSubjectModal, setShowSubjectModal] = useState(false);
   const [showSessionTypeModal, setShowSessionTypeModal] = useState(false);
@@ -73,6 +46,7 @@ export const ModalProvider = ({ children }) => {
   const [selectedFavorite, setSelectedFavorite] = useState('');
   const [favoriteCourses, setFavoriteCourses] = useState([]);
   const [onSessionCompleteCallback, setOnSessionCompleteCallback] = useState(null);
+  const [askNextSessionPopup, setAskNextSessionPopup] = useState(loadAskNextSessionPopup);
 
   const refreshFavorites = () => {
     setFavoriteCourses(loadFavoriteCourseNames());
@@ -85,11 +59,19 @@ export const ModalProvider = ({ children }) => {
     return () => window.removeEventListener('coursesUpdated', handler);
   }, []);
 
+  useEffect(() => {
+    const handler = () => setAskNextSessionPopup(loadAskNextSessionPopup());
+    window.addEventListener('settingsUpdated', handler);
+    return () => window.removeEventListener('settingsUpdated', handler);
+  }, []);
+
   const favoriteOptions = useMemo(() => favoriteCourses, [favoriteCourses]);
 
   const openSubjectModal = (duration, callback) => {
-    // ✅ Son "Done" (fin de session de travail)
-    playSoundFromSettings('done');
+    try {
+      const audio = new Audio('/ding.wav');
+      audio.play().catch(() => {});
+    } catch {}
 
     refreshFavorites();
 
@@ -109,16 +91,19 @@ export const ModalProvider = ({ children }) => {
     setSessionSubject('');
     setSelectedFavorite('');
 
-    // On garde le flux existant (2e modal)
-    setTimeout(() => {
-      setShowSessionTypeModal(true);
-    }, 100);
+    if (askNextSessionPopup) {
+      setTimeout(() => {
+        setShowSessionTypeModal(true);
+      }, 100);
+    }
   };
 
   const handleSessionTypeChoice = (isWorkSession) => {
-    // ✅ Son "Work" ou "Break" selon le bouton
-    playSoundFromSettings(isWorkSession ? 'work' : 'break');
-
+    try {
+      const soundFile = isWorkSession ? '/BRUH.mp3' : '/notification.mp3';
+      const audio = new Audio(soundFile);
+      audio.play().catch(() => {});
+    } catch {}
     setShowSessionTypeModal(false);
   };
 
@@ -127,8 +112,13 @@ export const ModalProvider = ({ children }) => {
     if (value) setSessionSubject(value);
   };
 
+  const openSessionTypeModal = () => {
+    if (!askNextSessionPopup) return;
+    setShowSessionTypeModal(true);
+  };
+
   return (
-    <ModalContext.Provider value={{ openSubjectModal, openSessionTypeModal: () => setShowSessionTypeModal(true) }}>
+    <ModalContext.Provider value={{ openSubjectModal, openSessionTypeModal }}>
       {children}
 
       {showSubjectModal &&

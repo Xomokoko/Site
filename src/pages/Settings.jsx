@@ -108,22 +108,37 @@ const Settings = () => {
   const volumePercent = Math.round((settings.soundVolume ?? 0.5) * 100);
   const hoursDisplayEnabled = settings.timeUnitMode !== 'minutes';
 
-  const subjects = useMemo(() => {
+  const allSubjects = useMemo(() => {
     const set = new Set();
+
     (courses || []).forEach((c) => {
       const name = String(c?.name || '').trim();
       if (name) set.add(name);
     });
+
     (sessions || []).forEach((s) => {
       const name = typeof s?.subject === 'string' ? s.subject.trim() : '';
       if (name) set.add(name);
     });
+
     return Array.from(set).sort((a, b) => a.localeCompare(b, 'fr'));
   }, [courses, sessions]);
 
+  const favoriteSubjects = useMemo(() => {
+    return (courses || [])
+      .filter((c) => c && c.favorite)
+      .map((c) => String(c?.name || '').trim())
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b, 'fr'));
+  }, [courses]);
+
   useEffect(() => {
-    if (!renameFrom && subjects.length > 0) setRenameFrom(subjects[0]);
-  }, [subjects, renameFrom]);
+    if (!renameFrom && favoriteSubjects.length > 0) setRenameFrom(favoriteSubjects[0]);
+    if (renameFrom && favoriteSubjects.length > 0 && !favoriteSubjects.includes(renameFrom)) {
+      setRenameFrom(favoriteSubjects[0]);
+    }
+    if (favoriteSubjects.length === 0) setRenameFrom('');
+  }, [favoriteSubjects, renameFrom]);
 
   const courseColorMap = useMemo(() => {
     const map = {};
@@ -179,6 +194,10 @@ const Settings = () => {
       setRenameErr('Choisis une matière à renommer.');
       return;
     }
+    if (!favoriteSubjects.includes(from)) {
+      setRenameErr('Seules les matières favorites ⭐ peuvent être renommées.');
+      return;
+    }
     if (!to) {
       setRenameErr('Entre le nouveau nom.');
       return;
@@ -188,8 +207,8 @@ const Settings = () => {
       return;
     }
 
-    const allSessions = loadArray(SESSIONS_KEY);
-    const updatedSessions = allSessions.map((s) => {
+    const allSessionsStored = loadArray(SESSIONS_KEY);
+    const updatedSessions = allSessionsStored.map((s) => {
       const subj = typeof s?.subject === 'string' ? s.subject.trim() : s?.subject;
       if (subj === from) return { ...s, subject: to };
       return s;
@@ -204,11 +223,11 @@ const Settings = () => {
     });
     saveArray(PLANNING_KEY, updatedPlanning);
 
-    const allCourses = loadArray(COURSES_KEY);
-    const idxFrom = allCourses.findIndex((c) => String(c?.name || '').trim() === from);
-    const idxTo = allCourses.findIndex((c) => String(c?.name || '').trim() === to);
+    const allCoursesStored = loadArray(COURSES_KEY);
+    const idxFrom = allCoursesStored.findIndex((c) => String(c?.name || '').trim() === from);
+    const idxTo = allCoursesStored.findIndex((c) => String(c?.name || '').trim() === to);
 
-    let updatedCourses = [...allCourses];
+    let updatedCourses = [...allCoursesStored];
 
     if (idxFrom !== -1 && idxTo !== -1) {
       const cFrom = updatedCourses[idxFrom];
@@ -269,6 +288,9 @@ const Settings = () => {
                 <div className="text-lg font-semibold text-slate-800 dark:text-white">
                   Popup “Pause ou session ?”
                 </div>
+                <div className="text-slate-600 dark:text-slate-300">
+                  Demander quoi faire après une session
+                </div>
               </div>
 
               <ToggleSwitch
@@ -285,7 +307,10 @@ const Settings = () => {
             <div className="flex items-center justify-between gap-4 mb-4">
               <div>
                 <div className="text-lg font-semibold text-slate-800 dark:text-white">
-                  Durée du Focus
+                  Durée du Focus (Pomodoro)
+                </div>
+                <div className="text-slate-600 dark:text-slate-300">
+                  Change la durée du mode Focus
                 </div>
               </div>
 
@@ -466,7 +491,7 @@ const Settings = () => {
                   Affichage du temps en heures
                 </div>
                 <div className="text-slate-600 dark:text-slate-300">
-                  Afficher automatiquement en heures
+                  Afficher automatiquement en heures (ex: 2h10) au lieu de minutes
                 </div>
               </div>
 
@@ -496,13 +521,13 @@ const Settings = () => {
               </button>
             </div>
 
-            {subjects.length === 0 ? (
+            {allSubjects.length === 0 ? (
               <div className="text-sm text-slate-600 dark:text-slate-300">
                 Aucune matière trouvée. Ajoute d’abord des cours ou des sessions.
               </div>
             ) : (
               <div className="space-y-3">
-                {subjects.map((subject) => {
+                {allSubjects.map((subject) => {
                   const effective = getEffectiveColor(subject);
                   const isCustom = !!analyticsColorMap?.[subject];
                   const time = subjectTimeMap?.[subject] || 0;
@@ -552,16 +577,16 @@ const Settings = () => {
               </div>
             </div>
 
-            {subjects.length === 0 ? (
+            {favoriteSubjects.length === 0 ? (
               <div className="text-sm text-slate-600 dark:text-slate-300">
-                Aucune matière trouvée.
+                Aucune matière favorite. Ajoute une ⭐ à un cours pour pouvoir le renommer ici.
               </div>
             ) : (
               <div className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">
-                      Ancien nom
+                      Nom
                     </label>
                     <select
                       className="input-field"
@@ -572,8 +597,10 @@ const Settings = () => {
                         setRenameMsg('');
                       }}
                     >
-                      {subjects.map((s) => (
-                        <option key={s} value={s}>{s}</option>
+                      {favoriteSubjects.map((s) => (
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
                       ))}
                     </select>
                   </div>
