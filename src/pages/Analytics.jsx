@@ -54,7 +54,10 @@ const formatMinutesSmart = (minutes, timeUnitMode) => {
 };
 
 const Analytics = () => {
-  const { sessions, breaks } = useStudyData();
+  const data = useStudyData() || {};
+  const sessions = Array.isArray(data.sessions) ? data.sessions : [];
+  const breaks = Array.isArray(data.breaks) ? data.breaks : [];
+
   const [timeRange, setTimeRange] = useState('week');
   const [showMigrationButton, setShowMigrationButton] = useState(false);
   const [weekOffset, setWeekOffset] = useState(0);
@@ -78,7 +81,7 @@ const Analytics = () => {
   }, []);
 
   useEffect(() => {
-    const sessionsWithInvalidSubject = sessions.filter((s) => !s.subject || s.subject === '' || typeof s.subject !== 'string');
+    const sessionsWithInvalidSubject = sessions.filter((s) => !s?.subject || s.subject === '' || typeof s.subject !== 'string');
     setShowMigrationButton(sessionsWithInvalidSubject.length > 0);
   }, [sessions]);
 
@@ -101,7 +104,8 @@ const Analytics = () => {
         subject,
         description: session.description || '',
         duration: session.duration || 0,
-        startTime: session.startTime
+        startTime: session.startTime,
+        isExam: !!session.isExam
       };
     });
 
@@ -116,29 +120,23 @@ const Analytics = () => {
 
     if (timeRange === 'week') filterDate.setDate(now.getDate() - 7);
     else if (timeRange === 'month') filterDate.setDate(now.getDate() - 30);
-    else return sessions;
+    else return sessions.filter((s) => !s?.isExam);
 
-    return sessions.filter((s) => new Date(s.date) >= filterDate);
+    return sessions.filter((s) => !s?.isExam && new Date(s.date) >= filterDate);
   }, [sessions, timeRange]);
 
-  const filteredBreaks = useMemo(() => {
-    const now = new Date();
-    const filterDate = new Date();
-
-    if (timeRange === 'week') filterDate.setDate(now.getDate() - 7);
-    else if (timeRange === 'month') filterDate.setDate(now.getDate() - 30);
-    else return breaks;
-
-    return breaks.filter((b) => new Date(b.date) >= filterDate);
-  }, [breaks, timeRange]);
+  const todayBreaks = useMemo(() => {
+    const today = new Date().toDateString();
+    return breaks.filter((b) => new Date(b.date).toDateString() === today);
+  }, [breaks]);
 
   const totalTime = filteredSessions.reduce((sum, s) => sum + (s.duration || 0), 0);
   const avgTime = filteredSessions.length > 0 ? Math.round(totalTime / filteredSessions.length) : 0;
   const uniqueDays = new Set(filteredSessions.map((s) => new Date(s.date).toDateString()));
   const streak = uniqueDays.size;
 
-  const breaksCount = filteredBreaks.length;
-  const breaksTime = filteredBreaks.reduce((sum, b) => sum + (b.duration || 0), 0);
+  const breaksCount = todayBreaks.length;
+  const breaksTime = todayBreaks.reduce((sum, b) => sum + (b.duration || 0), 0);
 
   const timeBySubject = useMemo(() => calculateTimeBySubject(filteredSessions), [filteredSessions]);
   const topSubjects = useMemo(() => getTopSubjects(filteredSessions, 3), [filteredSessions]);
@@ -208,6 +206,7 @@ const Analytics = () => {
     const timeByDay = Array(7).fill(0);
 
     sessions.forEach((session) => {
+      if (session?.isExam) return;
       const date = new Date(session.date);
       if (date < selectedWeekStart || date >= selectedWeekEnd) return;
       const idx = (date.getDay() + 6) % 7;
@@ -230,8 +229,8 @@ const Analytics = () => {
         { title: 'Sessions', value: filteredSessions.length, icon: BookOpen, color: 'purple' },
         { title: 'Durée moyenne', value: formatStudyTime(avgTime), icon: Calendar, color: 'green' },
         { title: 'Record de série', value: `${streak} jours`, icon: Award, color: 'amber' },
-        { title: 'Pauses', value: breaksCount, icon: Target, color: 'cyan' },
-        { title: 'Temps en pause', value: formatStudyTime(breaksTime), icon: Clock, color: 'red' }
+        { title: "Pauses", value: breaksCount, icon: Target, color: 'cyan' },
+        { title: "Temps en pause", value: formatStudyTime(breaksTime), icon: Clock, color: 'red' }
       ]
     : [
         { title: 'Temps total', value: formatStudyTime(totalTime), icon: Clock, color: 'blue' },
@@ -299,9 +298,7 @@ const Analytics = () => {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <div className="card animate-slide-up" style={{ animationDelay: '0.3s' }}>
-              <h2 className="text-2xl font-bold font-display mb-6 text-slate-800 dark:text-white">
-                Répartition par matière
-              </h2>
+              <h2 className="text-2xl font-bold font-display mb-6 text-slate-800 dark:text-white">Répartition par matière</h2>
               <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
                   <Pie
@@ -318,10 +315,7 @@ const Analytics = () => {
                     ))}
                   </Pie>
                   <Tooltip
-                    formatter={(value, _name, props) => [
-                      formatMinutesSmart(value, timeUnitMode),
-                      props?.payload?.name
-                    ]}
+                    formatter={(value, _name, props) => [formatMinutesSmart(value, timeUnitMode), props?.payload?.name]}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -354,9 +348,7 @@ const Analytics = () => {
             <div className="card animate-slide-up" style={{ animationDelay: '0.5s' }}>
               <div className="flex items-center justify-between mb-6">
                 <div>
-                  <h2 className="text-2xl font-bold font-display text-slate-800 dark:text-white">
-                    Temps par jour de la semaine
-                  </h2>
+                  <h2 className="text-2xl font-bold font-display text-slate-800 dark:text-white">Temps par jour de la semaine</h2>
                   <div className="text-sm text-slate-600 dark:text-slate-300 mt-1">
                     {weekOffset === 0 ? 'Cette semaine' : weekLabel} • {formatStudyTime(selectedWeekTotal)}
                   </div>

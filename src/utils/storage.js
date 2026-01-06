@@ -28,22 +28,26 @@ export const loadData = (key, defaultValue = null) => {
 
 export const saveStudySession = (session) => {
   const sessions = loadData(STORAGE_KEYS.STUDY_SESSIONS, []);
+  const safeSessions = Array.isArray(sessions) ? sessions : [];
 
   const cleanSession = {
-    id: session.id || Date.now(),
-    date: session.date || new Date().toISOString(),
-    subject: String(session.subject || 'Non spécifié'),
-    description: session.description || '',
-    duration: Number(session.duration || 0)
+    id: session?.id || `session-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    date: session?.date || new Date().toISOString(),
+    subject: String(session?.subject || 'Non spécifié'),
+    description: session?.description || '',
+    duration: Number(session?.duration || 0),
+    startTime: typeof session?.startTime === 'string' ? session.startTime : undefined,
+    isExam: !!session?.isExam
   };
 
-  sessions.push(cleanSession);
-  saveData(STORAGE_KEYS.STUDY_SESSIONS, sessions);
+  safeSessions.push(cleanSession);
+  saveData(STORAGE_KEYS.STUDY_SESSIONS, safeSessions);
   return cleanSession;
 };
 
 export const getStudySessions = () => {
-  return loadData(STORAGE_KEYS.STUDY_SESSIONS, []);
+  const sessions = loadData(STORAGE_KEYS.STUDY_SESSIONS, []);
+  return Array.isArray(sessions) ? sessions : [];
 };
 
 export const getSessionsByDateRange = (startDate, endDate) => {
@@ -56,43 +60,47 @@ export const getSessionsByDateRange = (startDate, endDate) => {
 
 export const saveBreak = (breakSession) => {
   const breaks = loadData(STORAGE_KEYS.BREAKS, []);
+  const safeBreaks = Array.isArray(breaks) ? breaks : [];
 
   const cleanBreak = {
-    id: breakSession.id || `break-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-    date: breakSession.date || new Date().toISOString(),
-    type: String(breakSession.type || 'break'),
-    duration: Number(breakSession.duration || 0)
+    id: breakSession?.id || `break-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    date: breakSession?.date || new Date().toISOString(),
+    type: String(breakSession?.type || 'break'),
+    duration: Number(breakSession?.duration || 0)
   };
 
-  breaks.push(cleanBreak);
-  saveData(STORAGE_KEYS.BREAKS, breaks);
+  safeBreaks.push(cleanBreak);
+  saveData(STORAGE_KEYS.BREAKS, safeBreaks);
   return cleanBreak;
 };
 
 export const getBreaks = () => {
-  return loadData(STORAGE_KEYS.BREAKS, []);
+  const breaks = loadData(STORAGE_KEYS.BREAKS, []);
+  return Array.isArray(breaks) ? breaks : [];
 };
 
 export const saveTask = (task) => {
   const tasks = loadData(STORAGE_KEYS.TASKS, []);
-  tasks.push({
+  const safeTasks = Array.isArray(tasks) ? tasks : [];
+
+  safeTasks.push({
     ...task,
-    id: Date.now(),
-    createdAt: new Date().toISOString(),
-    completed: false
+    id: task?.id || Date.now(),
+    createdAt: task?.createdAt || new Date().toISOString(),
+    completed: !!task?.completed
   });
-  saveData(STORAGE_KEYS.TASKS, tasks);
+
+  saveData(STORAGE_KEYS.TASKS, safeTasks);
 };
 
 export const getTasks = () => {
-  return loadData(STORAGE_KEYS.TASKS, []);
+  const tasks = loadData(STORAGE_KEYS.TASKS, []);
+  return Array.isArray(tasks) ? tasks : [];
 };
 
 export const updateTask = (taskId, updates) => {
   const tasks = getTasks();
-  const updatedTasks = tasks.map((task) =>
-    task.id === taskId ? { ...task, ...updates } : task
-  );
+  const updatedTasks = tasks.map((task) => (task.id === taskId ? { ...task, ...updates } : task));
   saveData(STORAGE_KEYS.TASKS, updatedTasks);
 };
 
@@ -110,18 +118,22 @@ export const clearAllData = () => {
 
 export const saveLink = (link) => {
   const links = loadData('links', []);
+  const safeLinks = Array.isArray(links) ? links : [];
+
   const clean = {
-    id: link.id || Date.now(),
-    name: String(link.name || ''),
-    url: String(link.url || '')
+    id: link?.id || Date.now(),
+    name: String(link?.name || ''),
+    url: String(link?.url || '')
   };
-  links.push(clean);
-  saveData('links', links);
+
+  safeLinks.push(clean);
+  saveData('links', safeLinks);
   return clean;
 };
 
 export const getLinks = () => {
-  return loadData('links', []);
+  const links = loadData('links', []);
+  return Array.isArray(links) ? links : [];
 };
 
 export const deleteLink = (linkId) => {
@@ -131,9 +143,7 @@ export const deleteLink = (linkId) => {
 };
 
 export const getSettings = () => {
-  return loadData(STORAGE_KEYS.SETTINGS, {
-    askNextSessionPopup: true
-  });
+  return loadData(STORAGE_KEYS.SETTINGS, { askNextSessionPopup: true });
 };
 
 export const updateSettings = (updates) => {

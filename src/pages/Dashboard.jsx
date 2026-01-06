@@ -18,16 +18,6 @@ const loadShowBreakStats = () => {
   }
 };
 
-const loadTimeUnitMode = () => {
-  try {
-    const raw = localStorage.getItem(SETTINGS_KEY);
-    const parsed = raw ? JSON.parse(raw) : {};
-    return parsed?.timeUnitMode === 'minutes' ? 'minutes' : 'auto';
-  } catch {
-    return 'auto';
-  }
-};
-
 const Dashboard = () => {
   const [settingsKey, setSettingsKey] = useState(0);
 
@@ -39,19 +29,18 @@ const Dashboard = () => {
     removeTask,
     getTodaySessions,
     getWeekSessions,
-    getWeekBreaks,
+    getTodayBreaks,
     reloadData
   } = useStudyData();
 
   const showBreakStats = useMemo(() => loadShowBreakStats(), [settingsKey]);
-  useMemo(() => loadTimeUnitMode(), [settingsKey]);
 
   const todaySessions = getTodaySessions();
   const weekSessions = getWeekSessions();
-  const weekBreaks = getWeekBreaks();
+  const todayBreaks = getTodayBreaks();
 
-  const todayTotal = todaySessions.reduce((sum, s) => sum + s.duration, 0);
-  const weekTotal = weekSessions.reduce((sum, s) => sum + s.duration, 0);
+  const todayTotal = todaySessions.reduce((sum, s) => sum + (s.duration || 0), 0);
+  const weekTotal = weekSessions.reduce((sum, s) => sum + (s.duration || 0), 0);
 
   useEffect(() => {
     const handleSessionAdded = () => reloadData();
@@ -72,7 +61,7 @@ const Dashboard = () => {
   const cards = showBreakStats
     ? [
         { title: "Temps aujourd'hui", value: formatStudyTime(todayTotal), icon: Clock, color: 'blue' },
-        { title: 'Pauses (7 jours)', value: weekBreaks.length, icon: Target, color: 'cyan' },
+        { title: "Pauses", value: todayBreaks.length, icon: Target, color: 'cyan' },
         { title: 'Série de jours', value: `${stats.streak} jours`, icon: Flame, color: 'amber' },
         { title: 'Sessions totales', value: stats.sessionsCount, icon: BookOpen, color: 'purple' },
         { title: 'Cette semaine', value: formatStudyTime(weekTotal), icon: TrendingUp, color: 'green' }
@@ -112,12 +101,7 @@ const Dashboard = () => {
 
           <div className="space-y-6">
             <div className="animate-slide-up" style={{ animationDelay: '0.4s' }}>
-              <TodoList
-                tasks={tasks}
-                onAddTask={addTask}
-                onToggleTask={toggleTaskComplete}
-                onDeleteTask={removeTask}
-              />
+              <TodoList tasks={tasks} onAddTask={addTask} onToggleTask={toggleTaskComplete} onDeleteTask={removeTask} />
             </div>
           </div>
         </div>

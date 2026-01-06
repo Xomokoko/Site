@@ -118,6 +118,7 @@ src/
 │   ├── Navbar.jsx
 │   ├── Timer.jsx
 │   ├── TodoList.jsx
+│   ├── ToggleSwitch.jsx
 │   ├── StatCard.jsx
 │   └── StudySession.jsx
 │
