@@ -14,8 +14,8 @@ const DEFAULT_SETTINGS = {
   soundsEnabled: true,
   soundVolume: 0.5,
   soundWork: '/BRUH.mp3',
-  soundBreak: '/ding.wav',
-  soundDone: '/notification.mp3',
+  soundBreak: '/notification.mp3',
+  soundDone: '/ding.wav',
   showBreakStats: true,
   timeUnitMode: 'auto'
 };
@@ -297,7 +297,9 @@ const Settings = () => {
                 <div className="text-lg font-semibold text-slate-800 dark:text-white">
                   Popup “Pause ou session ?”
                 </div>
-
+                <div className="text-slate-600 dark:text-slate-300">
+                  Demander quoi faire après une session
+                </div>
               </div>
 
               <ToggleSwitch
@@ -315,6 +317,9 @@ const Settings = () => {
               <div>
                 <div className="text-lg font-semibold text-slate-800 dark:text-white">
                   Durée du Focus
+                </div>
+                <div className="text-slate-600 dark:text-slate-300">
+                  Change la durée du mode Focus
                 </div>
               </div>
 

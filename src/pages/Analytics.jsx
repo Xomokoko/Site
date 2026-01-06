@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { Clock, BookOpen, Calendar, Award, TrendingUp, Target } from 'lucide-react';
 import useStudyData from '../hooks/useStudyData';
@@ -21,6 +21,16 @@ const loadShowBreakStats = () => {
   }
 };
 
+const loadTimeUnitMode = () => {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    const parsed = raw ? JSON.parse(raw) : {};
+    return parsed?.timeUnitMode || 'auto';
+  } catch {
+    return 'auto';
+  }
+};
+
 const loadAnalyticsColorMap = () => {
   try {
     const raw = localStorage.getItem(ANALYTICS_COLORS_KEY);
@@ -31,6 +41,18 @@ const loadAnalyticsColorMap = () => {
   }
 };
 
+const formatMinutesSmart = (minutes, timeUnitMode) => {
+  const m = Number(minutes || 0);
+  if (!Number.isFinite(m)) return '0 min';
+  if (timeUnitMode === 'minutes') return `${Math.round(m)} min`;
+  if (m < 60) return `${Math.round(m)} min`;
+
+  const total = Math.round(m);
+  const h = Math.floor(total / 60);
+  const mm = total % 60;
+  return mm === 0 ? `${h}h` : `${h}h${String(mm).padStart(2, '0')}`;
+};
+
 const Analytics = () => {
   const { sessions, breaks } = useStudyData();
   const [timeRange, setTimeRange] = useState('week');
@@ -38,9 +60,13 @@ const Analytics = () => {
   const [weekOffset, setWeekOffset] = useState(0);
   const [showBreakStats, setShowBreakStats] = useState(loadShowBreakStats);
   const [analyticsColorMap, setAnalyticsColorMap] = useState(loadAnalyticsColorMap);
+  const [timeUnitMode, setTimeUnitMode] = useState(loadTimeUnitMode);
 
   useEffect(() => {
-    const handler = () => setShowBreakStats(loadShowBreakStats());
+    const handler = () => {
+      setShowBreakStats(loadShowBreakStats());
+      setTimeUnitMode(loadTimeUnitMode());
+    };
     window.addEventListener('settingsUpdated', handler);
     return () => window.removeEventListener('settingsUpdated', handler);
   }, []);
@@ -52,9 +78,7 @@ const Analytics = () => {
   }, []);
 
   useEffect(() => {
-    const sessionsWithInvalidSubject = sessions.filter(
-      (s) => !s.subject || s.subject === '' || typeof s.subject !== 'string'
-    );
+    const sessionsWithInvalidSubject = sessions.filter((s) => !s.subject || s.subject === '' || typeof s.subject !== 'string');
     setShowMigrationButton(sessionsWithInvalidSubject.length > 0);
   }, [sessions]);
 
@@ -125,9 +149,10 @@ const Analytics = () => {
       .map(([subject]) => subject);
   }, [timeBySubject]);
 
-  const getColor = (subject, index) => {
-    return analyticsColorMap?.[subject] || DEFAULT_COLORS[index % DEFAULT_COLORS.length];
-  };
+  const getColor = useCallback(
+    (subject, index) => analyticsColorMap?.[subject] || DEFAULT_COLORS[index % DEFAULT_COLORS.length],
+    [analyticsColorMap]
+  );
 
   const pieData = useMemo(() => {
     return subjectsSorted.map((subject, index) => {
@@ -139,7 +164,7 @@ const Analytics = () => {
         color: getColor(subject, index)
       };
     });
-  }, [subjectsSorted, timeBySubject, totalTime, analyticsColorMap]);
+  }, [subjectsSorted, timeBySubject, totalTime, getColor]);
 
   const barData = useMemo(() => {
     return subjectsSorted.map((subject, index) => ({
@@ -147,7 +172,7 @@ const Analytics = () => {
       temps: timeBySubject[subject] || 0,
       color: getColor(subject, index)
     }));
-  }, [subjectsSorted, timeBySubject, analyticsColorMap]);
+  }, [subjectsSorted, timeBySubject, getColor]);
 
   const getWeekStartMonday = (date) => {
     const d = new Date(date);
@@ -196,6 +221,8 @@ const Analytics = () => {
   }, [sessions, selectedWeekStart, selectedWeekEnd]);
 
   const selectedWeekTotal = useMemo(() => dayData.reduce((sum, d) => sum + (d.temps || 0), 0), [dayData]);
+
+  const axisLabel = timeUnitMode === 'minutes' ? 'Minutes' : 'Temps';
 
   const cards = showBreakStats
     ? [
@@ -290,7 +317,12 @@ const Analytics = () => {
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value, name, props) => [`${value} min`, props.payload.name]} />
+                  <Tooltip
+                    formatter={(value, _name, props) => [
+                      formatMinutesSmart(value, timeUnitMode),
+                      props?.payload?.name
+                    ]}
+                  />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -300,9 +332,9 @@ const Analytics = () => {
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={barData}>
                   <XAxis dataKey="subject" angle={-45} textAnchor="end" height={100} interval={0} />
-                  <YAxis label={{ value: 'Minutes', angle: -90, position: 'insideLeft' }} />
+                  <YAxis label={{ value: axisLabel, angle: -90, position: 'insideLeft' }} />
                   <Tooltip
-                    formatter={(value) => [`${value} min`, 'Temps étudié']}
+                    formatter={(value) => [formatMinutesSmart(value, timeUnitMode), 'Temps étudié']}
                     labelFormatter={(label) => `Matière: ${label}`}
                     contentStyle={{
                       backgroundColor: 'var(--tooltip-bg, white)',
@@ -355,9 +387,9 @@ const Analytics = () => {
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={dayData}>
                   <XAxis dataKey="day" />
-                  <YAxis label={{ value: 'Minutes', angle: -90, position: 'insideLeft' }} />
+                  <YAxis label={{ value: axisLabel, angle: -90, position: 'insideLeft' }} />
                   <Tooltip
-                    formatter={(value) => [`${value} min`, 'Temps étudié']}
+                    formatter={(value) => [formatMinutesSmart(value, timeUnitMode), 'Temps étudié']}
                     labelFormatter={(label) => `Jour: ${label}`}
                     contentStyle={{
                       backgroundColor: 'var(--tooltip-bg, white)',
