@@ -35,11 +35,11 @@ const useStudyData = () => {
     const loadedTasks = getTasks();
     const loadedBreaks = getBreaks();
 
-    setSessions(Array.isArray(loadedSessions) ? loadedSessions : []);
+    const safeSessions = Array.isArray(loadedSessions) ? loadedSessions : [];
+    setSessions(safeSessions);
     setTasks(Array.isArray(loadedTasks) ? loadedTasks : []);
     setBreaks(Array.isArray(loadedBreaks) ? loadedBreaks : []);
-
-    updateStats(Array.isArray(loadedSessions) ? loadedSessions : []);
+    updateStats(safeSessions);
   }, [updateStats]);
 
   useEffect(() => {
@@ -159,13 +159,15 @@ const useStudyData = () => {
 
   const getTodaySessions = useCallback(() => {
     const today = new Date().toDateString();
-    return (Array.isArray(sessions) ? sessions : []).filter((s) => new Date(s.date).toDateString() === today);
+    return (Array.isArray(sessions) ? sessions : []).filter(
+      (s) => !s?.isExam && new Date(s.date).toDateString() === today
+    );
   }, [sessions]);
 
   const getWeekSessions = useCallback(() => {
     const weekAgo = new Date();
     weekAgo.setDate(weekAgo.getDate() - 7);
-    return (Array.isArray(sessions) ? sessions : []).filter((s) => new Date(s.date) >= weekAgo);
+    return (Array.isArray(sessions) ? sessions : []).filter((s) => !s?.isExam && new Date(s.date) >= weekAgo);
   }, [sessions]);
 
   const getTodayBreaks = useCallback(() => {

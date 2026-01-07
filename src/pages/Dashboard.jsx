@@ -61,7 +61,7 @@ const Dashboard = () => {
   const cards = showBreakStats
     ? [
         { title: "Temps aujourd'hui", value: formatStudyTime(todayTotal), icon: Clock, color: 'blue' },
-        { title: "Pauses", value: todayBreaks.length, icon: Target, color: 'cyan' },
+        { title: "Pauses (aujourd'hui)", value: todayBreaks.length, icon: Target, color: 'cyan' },
         { title: 'Série de jours', value: `${stats.streak} jours`, icon: Flame, color: 'amber' },
         { title: 'Sessions totales', value: stats.sessionsCount, icon: BookOpen, color: 'purple' },
         { title: 'Cette semaine', value: formatStudyTime(weekTotal), icon: TrendingUp, color: 'green' }
@@ -80,7 +80,6 @@ const Dashboard = () => {
           <h1 className="text-4xl font-bold font-display mb-2 bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
             Tableau de bord
           </h1>
-          <p className="text-slate-600 dark:text-white"></p>
         </div>
 
         <div

@@ -58,8 +58,7 @@ const Cours = () => {
     setShowForm(false);
   };
 
-  const toggleFavorite = (id) =>
-    setCourses((p) => p.map((c) => (c.id === id ? { ...c, favorite: !c.favorite } : c)));
+  const toggleFavorite = (id) => setCourses((p) => p.map((c) => (c.id === id ? { ...c, favorite: !c.favorite } : c)));
 
   const removeCourse = (id) => setCourses((p) => p.filter((c) => c.id !== id));
 
@@ -88,9 +87,7 @@ const Cours = () => {
           ? c
           : {
               ...c,
-              chapters: c.chapters.map((ch) =>
-                ch.id === chapterId ? { ...ch, title: editingChapterTitle.trim() } : ch
-              )
+              chapters: c.chapters.map((ch) => (ch.id === chapterId ? { ...ch, title: editingChapterTitle.trim() } : ch))
             }
       )
     );
@@ -99,21 +96,12 @@ const Cours = () => {
   };
 
   const deleteChapter = (courseId, chapterId) =>
-    setCourses((p) =>
-      p.map((c) =>
-        c.id !== courseId ? c : { ...c, chapters: c.chapters.filter((ch) => ch.id !== chapterId) }
-      )
-    );
+    setCourses((p) => p.map((c) => (c.id !== courseId ? c : { ...c, chapters: c.chapters.filter((ch) => ch.id !== chapterId) })));
 
   const toggleChapterDone = (courseId, chapterId) =>
     setCourses((p) =>
       p.map((c) =>
-        c.id !== courseId
-          ? c
-          : {
-              ...c,
-              chapters: c.chapters.map((ch) => (ch.id === chapterId ? { ...ch, done: !ch.done } : ch))
-            }
+        c.id !== courseId ? c : { ...c, chapters: c.chapters.map((ch) => (ch.id === chapterId ? { ...ch, done: !ch.done } : ch)) }
       )
     );
 
@@ -121,12 +109,7 @@ const Cours = () => {
     if (!newChapterTitle.trim()) return;
     setCourses((p) =>
       p.map((c) =>
-        c.id !== courseId
-          ? c
-          : {
-              ...c,
-              chapters: [...c.chapters, { id: Date.now(), title: newChapterTitle.trim(), done: false }]
-            }
+        c.id !== courseId ? c : { ...c, chapters: [...c.chapters, { id: Date.now(), title: newChapterTitle.trim(), done: false }] }
       )
     );
     setAddingChapterFor(null);
@@ -137,7 +120,10 @@ const Cours = () => {
     <div className="min-h-screen p-6">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {courses.map((course) => (
-          <div key={course.id} className="p-4 rounded-lg bg-slate-800 text-white">
+          <div
+            key={course.id}
+            className="p-4 rounded-lg bg-white text-slate-900 border border-slate-200 shadow-sm dark:bg-slate-800 dark:text-white dark:border-slate-700"
+          >
             <div className="flex justify-between items-start">
               <div className="flex items-center gap-2 min-w-0">
                 {editingCourseId === course.id ? (
@@ -149,7 +135,7 @@ const Cours = () => {
                       autoFocus
                     />
                     <button onClick={() => saveEditCourse(course.id)}>
-                      <Check className="w-4 h-4 text-green-400" />
+                      <Check className="w-4 h-4 text-green-500 dark:text-green-400" />
                     </button>
                     <button
                       onClick={() => {
@@ -157,7 +143,7 @@ const Cours = () => {
                         setEditingCourseName('');
                       }}
                     >
-                      <X className="w-4 h-4 text-slate-400" />
+                      <X className="w-4 h-4 text-slate-500 dark:text-slate-400" />
                     </button>
                   </>
                 ) : (
@@ -165,9 +151,7 @@ const Cours = () => {
                     <div className="font-semibold truncate">{course.name}</div>
                     <button onClick={() => toggleFavorite(course.id)}>
                       <Star
-                        className={`w-4 h-4 ${
-                          course.favorite ? 'fill-yellow-400 text-yellow-400' : 'text-slate-400'
-                        }`}
+                        className={`w-4 h-4 ${course.favorite ? 'fill-yellow-400 text-yellow-400' : 'text-slate-400 dark:text-slate-400'}`}
                       />
                     </button>
                   </>
@@ -176,7 +160,7 @@ const Cours = () => {
 
               <div className="flex items-center gap-2">
                 <button onClick={() => startEditCourse(course)}>
-                  <Pencil className="w-4 h-4 text-slate-400" />
+                  <Pencil className="w-4 h-4 text-slate-500 dark:text-slate-400" />
                 </button>
                 <button onClick={() => removeCourse(course.id)}>
                   <Trash2 className="w-4 h-4 text-red-500" />
@@ -184,7 +168,7 @@ const Cours = () => {
               </div>
             </div>
 
-            <div className="mt-3 space-y-2 text-sm text-slate-200">
+            <div className="mt-3 space-y-2 text-sm text-slate-700 dark:text-slate-200">
               {course.chapters.map((ch) => {
                 const isEditing = editingChapter.courseId === course.id && editingChapter.chapterId === ch.id;
 
@@ -199,7 +183,7 @@ const Cours = () => {
                           autoFocus
                         />
                         <button onClick={() => saveEditChapter(course.id, ch.id)}>
-                          <Check className="w-4 h-4 text-green-400" />
+                          <Check className="w-4 h-4 text-green-500 dark:text-green-400" />
                         </button>
                         <button
                           onClick={() => {
@@ -207,7 +191,7 @@ const Cours = () => {
                             setEditingChapterTitle('');
                           }}
                         >
-                          <X className="w-4 h-4 text-slate-400" />
+                          <X className="w-4 h-4 text-slate-500 dark:text-slate-400" />
                         </button>
                       </>
                     ) : (
@@ -219,13 +203,11 @@ const Cours = () => {
                           className="w-4 h-4 rounded border-slate-400 bg-transparent accent-blue-500 cursor-pointer"
                           title="Marquer comme fait"
                         />
-                        <span className={`flex-1 truncate ${ch.done ? 'line-through text-slate-400' : ''}`}>
-                          {ch.title}
-                        </span>
+                        <span className={`flex-1 truncate ${ch.done ? 'line-through text-slate-400' : ''}`}>{ch.title}</span>
 
                         <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button onClick={() => startEditChapter(course.id, ch)}>
-                            <Pencil className="w-4 h-4 text-slate-400" />
+                            <Pencil className="w-4 h-4 text-slate-500 dark:text-slate-400" />
                           </button>
                           <button onClick={() => deleteChapter(course.id, ch.id)}>
                             <Trash2 className="w-4 h-4 text-red-500" />
@@ -254,7 +236,7 @@ const Cours = () => {
                     }}
                   />
                   <button onClick={() => addChapter(course.id)}>
-                    <Check className="w-4 h-4 text-green-400" />
+                    <Check className="w-4 h-4 text-green-500 dark:text-green-400" />
                   </button>
                   <button
                     onClick={() => {
@@ -262,13 +244,13 @@ const Cours = () => {
                       setNewChapterTitle('');
                     }}
                   >
-                    <X className="w-4 h-4 text-slate-400" />
+                    <X className="w-4 h-4 text-slate-500 dark:text-slate-400" />
                   </button>
                 </div>
               ) : (
                 <button
                   onClick={() => setAddingChapterFor(course.id)}
-                  className="flex items-center gap-1 text-xs text-slate-400 hover:text-white mt-2"
+                  className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white mt-2"
                 >
                   <Plus className="w-4 h-4" />
                   Ajouter un chapitre
@@ -281,14 +263,14 @@ const Cours = () => {
 
       <button
         onClick={() => setShowForm(true)}
-        className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-blue-600 text-white text-3xl"
+        className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-blue-600 hover:bg-blue-700 text-white text-3xl shadow-lg"
       >
         +
       </button>
 
       {showForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center">
-          <div className="bg-white text-black p-6 rounded-lg w-full max-w-md">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white p-6 rounded-lg w-full max-w-md border border-slate-200 dark:border-slate-700">
             <h2 className="text-lg font-semibold mb-4">Nouveau cours</h2>
             <input
               value={name}
@@ -310,6 +292,7 @@ const Cours = () => {
                   setShowForm(false);
                   setName('');
                 }}
+                className="btn-secondary"
               >
                 Annuler
               </button>
