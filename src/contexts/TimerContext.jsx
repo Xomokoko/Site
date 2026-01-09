@@ -45,6 +45,8 @@ const playBreakSound = () => {
   } catch {}
 };
 
+const pad2 = (n) => String(n).padStart(2, '0');
+
 export const TimerProvider = ({ children }) => {
   const [timerMode, setTimerMode] = useState('pomodoro');
   const [customMinutes, setCustomMinutes] = useState(50);
@@ -64,13 +66,21 @@ export const TimerProvider = ({ children }) => {
 
   const currentMode = modes[timerMode];
 
-  const handleSessionComplete = useCallback((duration, subject = 'Session de travail') => {
+  const handleSessionComplete = useCallback((durationMinutes, subject = 'Session de travail') => {
+    const dur = Number(durationMinutes || 0);
+    const end = new Date();
+    const start = new Date(end.getTime() - dur * 60 * 1000);
+
+    const startTime = `${pad2(start.getHours())}:${pad2(start.getMinutes())}`;
+
     const newSession = {
       id: `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      date: new Date().toISOString(),
+      date: start.toISOString(),
       subject,
       description: '',
-      duration
+      duration: dur,
+      startTime,
+      isExam: false
     };
 
     saveStudySession(newSession);

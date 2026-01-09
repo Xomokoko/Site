@@ -8,6 +8,7 @@ import { generatePlanning } from '../utils/planningGenerator';
 import ToggleSwitch from '../components/ToggleSwitch';
 
 const SETTINGS_KEY = 'etudes_settings';
+const ANALYTICS_COLORS_KEY = 'etudes_analytics_colors';
 
 const loadTimeUnitMode = () => {
   try {
@@ -16,6 +17,16 @@ const loadTimeUnitMode = () => {
     return parsed?.timeUnitMode || 'auto';
   } catch {
     return 'auto';
+  }
+};
+
+const loadAnalyticsColorMap = () => {
+  try {
+    const raw = localStorage.getItem(ANALYTICS_COLORS_KEY);
+    const parsed = raw ? JSON.parse(raw) : {};
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
   }
 };
 
@@ -31,6 +42,8 @@ const formatMinutesSmart = (minutes, timeUnitMode) => {
   return mm === 0 ? `${h}h` : `${h}h${String(mm).padStart(2, '0')}`;
 };
 
+const normalizeSubject = (v) => (typeof v === 'string' ? v.trim() : '');
+
 const Planning = () => {
   const { sessions = [], addSession, deleteSession, addMultipleSessions } = useStudyData();
 
@@ -42,11 +55,18 @@ const Planning = () => {
   const [showWizard, setShowWizard] = useState(false);
 
   const [timeUnitMode, setTimeUnitMode] = useState(loadTimeUnitMode);
+  const [analyticsColorMap, setAnalyticsColorMap] = useState(loadAnalyticsColorMap);
 
   useEffect(() => {
     const handler = () => setTimeUnitMode(loadTimeUnitMode());
     window.addEventListener('settingsUpdated', handler);
     return () => window.removeEventListener('settingsUpdated', handler);
+  }, []);
+
+  useEffect(() => {
+    const handler = () => setAnalyticsColorMap(loadAnalyticsColorMap());
+    window.addEventListener('analyticsColorsUpdated', handler);
+    return () => window.removeEventListener('analyticsColorsUpdated', handler);
   }, []);
 
   const today = new Date();
@@ -101,7 +121,7 @@ const Planning = () => {
   };
 
   const getSessionsForDay = (day) => {
-    return (sessions || [])
+    const daySessions = (sessions || [])
       .filter((s) => isSameDay(new Date(s.date), day))
       .map((session) => {
         const sessionDate = new Date(session.date);
@@ -113,9 +133,48 @@ const Planning = () => {
 
         if (sessionHour < 6 || sessionHour >= 24) return null;
 
-        return { ...session, top: Math.max(0, top), height };
+        return { 
+          ...session, 
+          top: Math.max(0, top), 
+          height: Math.max(16, height),
+          end: Math.max(0, top) + Math.max(16, height)
+        };
       })
-      .filter(Boolean);
+      .filter(Boolean)
+      .sort((a, b) => a.top - b.top);
+
+    // Détection des chevauchements et ajustement de la position
+    const positioned = [];
+    daySessions.forEach((session) => {
+      let column = 0;
+      let overlapping = positioned.filter(
+        (p) => !(session.top >= p.end || session.end <= p.top)
+      );
+
+      if (overlapping.length > 0) {
+        const usedColumns = overlapping.map((p) => p.column);
+        while (usedColumns.includes(column)) {
+          column++;
+        }
+      }
+
+      const maxColumns = Math.max(
+        ...positioned
+          .filter((p) => !(session.top >= p.end || session.end <= p.top))
+          .map((p) => p.column + 1),
+        column + 1
+      );
+
+      positioned.push({ ...session, column, maxColumns });
+    });
+
+    return positioned;
+  };
+
+  const getSubjectColor = (subject) => {
+    const s = normalizeSubject(subject);
+    if (!s) return null;
+    return analyticsColorMap?.[s] || null;
   };
 
   return (
@@ -167,9 +226,9 @@ const Planning = () => {
                   <div
                     key={hour}
                     style={{ height: `${HOUR_HEIGHT}px` }}
-                    className="text-xs text-slate-500 dark:text-slate-400 text-right pr-2 relative"
+                    className="text-xs text-slate-500 dark:text-slate-400 text-right pr-2 flex items-start"
                   >
-                    <span className="absolute top-0 right-2 -translate-y-1/2">
+                    <span className="mt-[-6px]">
                       {hour === 24 ? '00:00' : `${hour.toString().padStart(2, '0')}:00`}
                     </span>
                   </div>
@@ -220,46 +279,64 @@ const Planning = () => {
                         </div>
                       ))}
 
-                      {daySessions.map((session) => (
-                        <div
-                          key={session.id}
-                          style={{ top: `${session.top}px`, height: `${session.height}px` }}
-                          className="absolute left-1 right-1 group z-10"
-                        >
-                          <div
-                            className={`h-full rounded p-1.5 shadow-md hover:shadow-lg transition-all border-l-4 overflow-hidden ${
-                              session.isExam
-                                ? 'bg-gradient-to-br from-red-500 to-rose-600 dark:from-red-600 dark:to-rose-700 border-red-700 dark:border-red-400'
-                                : 'bg-gradient-to-br from-blue-500 to-indigo-600 dark:from-blue-600 dark:to-indigo-700 border-blue-700 dark:border-blue-400'
-                            }`}
-                          >
-                            <div className="flex items-start justify-between gap-1 h-full">
-                              <div className="flex-1 min-w-0">
-                                <div className="font-semibold text-xs text-white truncate">{session.subject}</div>
-                                {session.height >= 32 && (
-                                  <div className="text-xs text-white/80 mt-0.5">{session.startTime}</div>
-                                )}
-                                {session.height >= 48 && (
-                                  <div className="text-xs text-white/80">
-                                    {formatMinutesSmart(session.duration, timeUnitMode)}
-                                  </div>
-                                )}
-                              </div>
+                      {daySessions.map((session) => {
+                        const customColor = !session.isExam ? getSubjectColor(session.subject) : null;
 
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  deleteSession(session.id);
-                                }}
-                                className="opacity-0 group-hover:opacity-100 transition-all p-1 rounded hover:bg-red-500 dark:hover:bg-red-600 text-white flex-shrink-0"
-                                title="Supprimer"
-                              >
-                                <Trash2 className="w-3 h-3" />
-                              </button>
+                        const boxTitle = `${normalizeSubject(session.subject) || 'Session'}\nDébut: ${
+                          session.startTime || '—'
+                        }\nDurée: ${session.duration || 0} min`;
+
+                        const baseClass = session.isExam
+                          ? 'bg-gradient-to-br from-red-500 to-rose-600 dark:from-red-600 dark:to-rose-700 border-l-4 border-red-700 dark:border-red-400'
+                          : customColor
+                          ? 'border-l-4'
+                          : 'bg-gradient-to-br from-blue-500 to-indigo-600 dark:from-blue-600 dark:to-indigo-700 border-l-4 border-blue-700 dark:border-blue-400';
+
+                        const style = customColor
+                          ? { backgroundColor: customColor, borderLeftColor: customColor }
+                          : undefined;
+
+                        return (
+                          <div
+                            key={session.id}
+                            style={{ top: `${session.top}px`, height: `${session.height}px` }}
+                            className="absolute left-1 right-1 group z-10"
+                          >
+                            <div
+                              className={`h-full rounded p-1.5 shadow-md hover:shadow-lg transition-all overflow-hidden ${baseClass}`}
+                              style={style}
+                              title={boxTitle}
+                            >
+                              <div className="flex items-start justify-between gap-1 h-full">
+                                <div className="flex-1 min-w-0">
+                                  <div className="font-semibold text-xs text-white truncate">
+                                    {normalizeSubject(session.subject) || 'Session'}
+                                  </div>
+                                  {session.height >= 32 && (
+                                    <div className="text-xs text-white/80 mt-0.5">{session.startTime}</div>
+                                  )}
+                                  {session.height >= 48 && (
+                                    <div className="text-xs text-white/80">
+                                      {formatMinutesSmart(session.duration, timeUnitMode)}
+                                    </div>
+                                  )}
+                                </div>
+
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    deleteSession(session.id);
+                                  }}
+                                  className="opacity-0 group-hover:opacity-100 transition-all p-1 rounded hover:bg-black/20 text-white flex-shrink-0"
+                                  title="Supprimer"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
 
                       {isToday &&
                         (() => {

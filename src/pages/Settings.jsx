@@ -20,6 +20,12 @@ const DEFAULT_SETTINGS = {
   timeUnitMode: 'auto'
 };
 
+const SOUND_OPTIONS = [
+  { label: 'Ding (ding.wav)', value: '/ding.wav' },
+  { label: 'Notification (notification.mp3)', value: '/notification.mp3' },
+  { label: 'Bruh (BRUH.mp3)', value: '/BRUH.mp3' }
+];
+
 const loadSettings = () => {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
@@ -67,11 +73,19 @@ const saveAnalyticsColorMap = (map) => {
   window.dispatchEvent(new Event('analyticsColorsUpdated'));
 };
 
-const SOUND_OPTIONS = [
-  { label: 'Ding (ding.wav)', value: '/ding.wav' },
-  { label: 'Notification (notification.mp3)', value: '/notification.mp3' },
-  { label: 'Bruh (BRUH.mp3)', value: '/BRUH.mp3' }
-];
+const normalizeSubject = (v) => {
+  const s = typeof v === 'string' ? v.trim() : '';
+  return s;
+};
+
+const isIgnoredSubject = (name) => {
+  const n = normalizeSubject(name);
+  if (!n) return true;
+  const low = n.toLowerCase();
+  if (low === 'session de travail') return true;
+  if (low === 'non spécifié' || low === 'non specifie') return true;
+  return false;
+};
 
 const Settings = () => {
   const [settings, setSettings] = useState(loadSettings);
@@ -108,27 +122,35 @@ const Settings = () => {
   const volumePercent = Math.round((settings.soundVolume ?? 0.5) * 100);
   const hoursDisplayEnabled = settings.timeUnitMode !== 'minutes';
 
-  const allSubjects = useMemo(() => {
-    const set = new Set();
-
-    (courses || []).forEach((c) => {
-      const name = String(c?.name || '').trim();
-      if (name) set.add(name);
-    });
-
-    (sessions || []).forEach((s) => {
-      const name = typeof s?.subject === 'string' ? s.subject.trim() : '';
-      if (name) set.add(name);
-    });
-
-    return Array.from(set).sort((a, b) => a.localeCompare(b, 'fr'));
-  }, [courses, sessions]);
+  const favoriteSubjects = useMemo(() => {
+    return (courses || [])
+      .filter((c) => c && c.favorite === true)
+      .map((c) => normalizeSubject(c?.name))
+      .filter((n) => !isIgnoredSubject(n));
+  }, [courses]);
 
   const sessionSubjects = useMemo(() => {
+    const set = new Set();
+    (sessions || []).forEach((s) => {
+      const name = normalizeSubject(s?.subject);
+      if (isIgnoredSubject(name)) return;
+      set.add(name);
+    });
+    return Array.from(set);
+  }, [sessions]);
+
+  const subjectsForColors = useMemo(() => {
+    const set = new Set();
+    favoriteSubjects.forEach((s) => set.add(s));
+    sessionSubjects.forEach((s) => set.add(s));
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'fr'));
+  }, [favoriteSubjects, sessionSubjects]);
+
+  const sessionSubjectsSortedByTime = useMemo(() => {
     const map = new Map();
     (sessions || []).forEach((s) => {
-      const name = typeof s?.subject === 'string' ? s.subject.trim() : '';
-      if (!name) return;
+      const name = normalizeSubject(s?.subject);
+      if (isIgnoredSubject(name)) return;
       const dur = Number(s?.duration || 0);
       map.set(name, (map.get(name) || 0) + dur);
     });
@@ -139,35 +161,25 @@ const Settings = () => {
   }, [sessions]);
 
   useEffect(() => {
-    if (!renameFrom && sessionSubjects.length > 0) setRenameFrom(sessionSubjects[0]);
-    if (renameFrom && sessionSubjects.length > 0 && !sessionSubjects.includes(renameFrom)) {
-      setRenameFrom(sessionSubjects[0]);
+    if (!renameFrom && sessionSubjectsSortedByTime.length > 0) setRenameFrom(sessionSubjectsSortedByTime[0]);
+    if (renameFrom && sessionSubjectsSortedByTime.length > 0 && !sessionSubjectsSortedByTime.includes(renameFrom)) {
+      setRenameFrom(sessionSubjectsSortedByTime[0]);
     }
-    if (sessionSubjects.length === 0) setRenameFrom('');
-  }, [sessionSubjects, renameFrom]);
-
-  const courseColorMap = useMemo(() => {
-    const map = {};
-    (courses || []).forEach((c) => {
-      const name = String(c?.name || '').trim();
-      const color = typeof c?.color === 'string' ? c.color : null;
-      if (name && color) map[name] = color;
-    });
-    return map;
-  }, [courses]);
+    if (sessionSubjectsSortedByTime.length === 0) setRenameFrom('');
+  }, [sessionSubjectsSortedByTime, renameFrom]);
 
   const subjectTimeMap = useMemo(() => {
     const map = {};
     (sessions || []).forEach((s) => {
-      const name = typeof s?.subject === 'string' ? s.subject.trim() : '';
-      if (!name) return;
+      const name = normalizeSubject(s?.subject);
+      if (isIgnoredSubject(name)) return;
       map[name] = (map[name] || 0) + Number(s?.duration || 0);
     });
     return map;
   }, [sessions]);
 
   const getEffectiveColor = (subject) => {
-    return analyticsColorMap?.[subject] || courseColorMap?.[subject] || '#64748b';
+    return analyticsColorMap?.[subject] || '#64748b';
   };
 
   const setSubjectColor = (subject, color) => {
@@ -193,14 +205,14 @@ const Settings = () => {
     setRenameErr('');
     setRenameMsg('');
 
-    const from = String(renameFrom || '').trim();
-    const to = String(renameTo || '').trim();
+    const from = normalizeSubject(renameFrom);
+    const to = normalizeSubject(renameTo);
 
     if (!from) {
       setRenameErr('Choisis une matière à renommer.');
       return;
     }
-    if (!sessionSubjects.includes(from)) {
+    if (!sessionSubjectsSortedByTime.includes(from)) {
       setRenameErr('Cette matière ne fait pas partie des données du diagramme.');
       return;
     }
@@ -215,7 +227,7 @@ const Settings = () => {
 
     const allSessionsStored = loadArray(SESSIONS_KEY);
     const updatedSessions = allSessionsStored.map((s) => {
-      const subj = typeof s?.subject === 'string' ? s.subject.trim() : s?.subject;
+      const subj = normalizeSubject(s?.subject);
       if (subj === from) return { ...s, subject: to };
       return s;
     });
@@ -223,15 +235,15 @@ const Settings = () => {
 
     const allPlanning = loadArray(PLANNING_KEY);
     const updatedPlanning = allPlanning.map((p) => {
-      const subj = typeof p?.subject === 'string' ? p.subject.trim() : p?.subject;
+      const subj = normalizeSubject(p?.subject);
       if (subj === from) return { ...p, subject: to };
       return p;
     });
     saveArray(PLANNING_KEY, updatedPlanning);
 
     const allCoursesStored = loadArray(COURSES_KEY);
-    const idxFrom = allCoursesStored.findIndex((c) => String(c?.name || '').trim() === from);
-    const idxTo = allCoursesStored.findIndex((c) => String(c?.name || '').trim() === to);
+    const idxFrom = allCoursesStored.findIndex((c) => normalizeSubject(c?.name) === from);
+    const idxTo = allCoursesStored.findIndex((c) => normalizeSubject(c?.name) === to);
 
     let updatedCourses = [...allCoursesStored];
 
@@ -243,24 +255,17 @@ const Settings = () => {
       const chaptersTo = Array.isArray(cTo?.chapters) ? cTo.chapters : [];
 
       const mergedChapters = [...chaptersTo];
-      const existingTitles = new Set(
-        chaptersTo.map((ch) => String(ch?.title || '').trim()).filter(Boolean)
-      );
+      const existingTitles = new Set(chaptersTo.map((ch) => normalizeSubject(ch?.title)).filter(Boolean));
 
       chaptersFrom.forEach((ch) => {
-        const t = String(ch?.title || '').trim();
+        const t = normalizeSubject(ch?.title);
         if (!t) return;
         if (existingTitles.has(t)) return;
         mergedChapters.push(ch);
         existingTitles.add(t);
       });
 
-      updatedCourses[idxTo] = {
-        ...cTo,
-        favorite: !!cTo.favorite || !!cFrom.favorite,
-        chapters: mergedChapters
-      };
-
+      updatedCourses[idxTo] = { ...cTo, favorite: !!cTo.favorite || !!cFrom.favorite, chapters: mergedChapters };
       updatedCourses = updatedCourses.filter((_, i) => i !== idxFrom);
     } else if (idxFrom !== -1) {
       updatedCourses[idxFrom] = { ...updatedCourses[idxFrom], name: to };
@@ -294,12 +299,8 @@ const Settings = () => {
           <div className="card p-6">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <div className="text-lg font-semibold text-slate-800 dark:text-white">
-                  Popup “Pause ou session ?”
-                </div>
-                <div className="text-slate-600 dark:text-slate-300">
-                  Demander quoi faire après une session
-                </div>
+                <div className="text-lg font-semibold text-slate-800 dark:text-white">Popup “Pause ou session ?”</div>
+                <div className="text-slate-600 dark:text-slate-300">Demander quoi faire après une session</div>
               </div>
 
               <ToggleSwitch
@@ -315,17 +316,11 @@ const Settings = () => {
           <div className="card p-6">
             <div className="flex items-center justify-between gap-4 mb-4">
               <div>
-                <div className="text-lg font-semibold text-slate-800 dark:text-white">
-                  Durée du Focus
-                </div>
-                <div className="text-slate-600 dark:text-slate-300">
-                  Change la durée du mode Focus
-                </div>
+                <div className="text-lg font-semibold text-slate-800 dark:text-white">Durée du Focus</div>
+                <div className="text-slate-600 dark:text-slate-300">Change la durée du mode Focus</div>
               </div>
 
-              <div className="text-lg font-bold text-slate-800 dark:text-white">
-                {settings.focusMinutes} min
-              </div>
+              <div className="text-lg font-bold text-slate-800 dark:text-white">{settings.focusMinutes} min</div>
             </div>
 
             <input
@@ -348,14 +343,27 @@ const Settings = () => {
           </div>
 
           <div className="card p-6">
+            <div className="flex items-center justify-between gap-4 mb-4">
+              <div>
+                <div className="text-lg font-semibold text-slate-800 dark:text-white">Affichage du temps en heures</div>
+                <div className="text-slate-600 dark:text-slate-300">Afficher automatiquement en heures</div>
+              </div>
+
+              <ToggleSwitch
+                checked={hoursDisplayEnabled}
+                onChange={() => {
+                  const next = saveSettings({ timeUnitMode: hoursDisplayEnabled ? 'minutes' : 'auto' });
+                  setSettings(next);
+                }}
+              />
+            </div>
+          </div>
+
+          <div className="card p-6">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <div className="text-lg font-semibold text-slate-800 dark:text-white">
-                  Sons
-                </div>
-                <div className="text-slate-600 dark:text-slate-300">
-                  Activer / désactiver les sons, volume, et sons par type
-                </div>
+                <div className="text-lg font-semibold text-slate-800 dark:text-white">Sons</div>
+                <div className="text-slate-600 dark:text-slate-300">Activer / désactiver, volume, sons par type</div>
               </div>
 
               <ToggleSwitch
@@ -370,12 +378,8 @@ const Settings = () => {
             <div className={`mt-6 space-y-5 ${settings.soundsEnabled ? '' : 'opacity-50 pointer-events-none'}`}>
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <div className="text-sm font-medium text-slate-700 dark:text-slate-200">
-                    Volume
-                  </div>
-                  <div className="text-sm font-semibold text-slate-800 dark:text-white">
-                    {volumePercent}%
-                  </div>
+                  <div className="text-sm font-medium text-slate-700 dark:text-slate-200">Volume</div>
+                  <div className="text-sm font-semibold text-slate-800 dark:text-white">{volumePercent}%</div>
                 </div>
 
                 <input
@@ -400,9 +404,7 @@ const Settings = () => {
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">
-                    Son “Work”
-                  </label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">Son “Work”</label>
                   <select
                     value={settings.soundWork}
                     onChange={(e) => {
@@ -418,9 +420,7 @@ const Settings = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">
-                    Son “Break”
-                  </label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">Son “Break”</label>
                   <select
                     value={settings.soundBreak}
                     onChange={(e) => {
@@ -436,9 +436,7 @@ const Settings = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">
-                    Son “Done”
-                  </label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">Son “Done”</label>
                   <select
                     value={settings.soundDone}
                     onChange={(e) => {
@@ -453,75 +451,15 @@ const Settings = () => {
                   </select>
                 </div>
               </div>
-
-              <div className="pt-2">
-                <button
-                  type="button"
-                  className="btn-secondary"
-                  onClick={() => {
-                    try {
-                      const audio = new Audio(settings.soundDone);
-                      audio.volume = Number(settings.soundVolume ?? 0.5);
-                      audio.play().catch(() => {});
-                    } catch {}
-                  }}
-                >
-                  Tester le son “Done”
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div className="card p-6">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <div className="text-lg font-semibold text-slate-800 dark:text-white">
-                  Statistiques des pauses
-                </div>
-                <div className="text-slate-600 dark:text-slate-300">
-                  Afficher le nombre de pauses et le temps de pause dans les statistiques
-                </div>
-              </div>
-
-              <ToggleSwitch
-                checked={settings.showBreakStats}
-                onChange={() => {
-                  const next = saveSettings({ showBreakStats: !settings.showBreakStats });
-                  setSettings(next);
-                }}
-              />
-            </div>
-          </div>
-
-          <div className="card p-6">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <div className="text-lg font-semibold text-slate-800 dark:text-white">
-                  Affichage du temps en heures
-                </div>
-                <div className="text-slate-600 dark:text-slate-300">
-                  Afficher automatiquement en heures
-                </div>
-              </div>
-
-              <ToggleSwitch
-                checked={hoursDisplayEnabled}
-                onChange={() => {
-                  const next = saveSettings({ timeUnitMode: hoursDisplayEnabled ? 'minutes' : 'auto' });
-                  setSettings(next);
-                }}
-              />
             </div>
           </div>
 
           <div className="card p-6">
             <div className="flex items-center justify-between gap-4 mb-4">
               <div>
-                <div className="text-lg font-semibold text-slate-800 dark:text-white">
-                  Couleurs des graphiques (Analyses)
-                </div>
+                <div className="text-lg font-semibold text-slate-800 dark:text-white">Couleurs des graphiques (Analyses)</div>
                 <div className="text-slate-600 dark:text-slate-300">
-                  Personnaliser les couleurs affichées dans la page Analyses
+                  Cours favoris + matières présentes dans le diagramme
                 </div>
               </div>
 
@@ -530,13 +468,13 @@ const Settings = () => {
               </button>
             </div>
 
-            {allSubjects.length === 0 ? (
+            {subjectsForColors.length === 0 ? (
               <div className="text-sm text-slate-600 dark:text-slate-300">
-                Aucune matière trouvée. Ajoute d’abord des cours ou des sessions.
+                Aucun cours favori et aucune matière dans l’historique.
               </div>
             ) : (
               <div className="space-y-3">
-                {allSubjects.map((subject) => {
+                {subjectsForColors.map((subject) => {
                   const effective = getEffectiveColor(subject);
                   const isCustom = !!analyticsColorMap?.[subject];
                   const time = subjectTimeMap?.[subject] || 0;
@@ -545,12 +483,8 @@ const Settings = () => {
                     <div key={subject} className="flex items-center gap-3">
                       <div className="w-3 h-3 rounded-full" style={{ backgroundColor: effective }} />
                       <div className="flex-1 min-w-0">
-                        <div className="text-sm font-semibold text-slate-800 dark:text-white truncate">
-                          {subject}
-                        </div>
-                        <div className="text-xs text-slate-600 dark:text-slate-300">
-                          {formatStudyTime(time)}
-                        </div>
+                        <div className="text-sm font-semibold text-slate-800 dark:text-white truncate">{subject}</div>
+                        <div className="text-xs text-slate-600 dark:text-slate-300">{formatStudyTime(time)}</div>
                       </div>
 
                       <input
@@ -580,26 +514,20 @@ const Settings = () => {
           <div className="card p-6">
             <div className="flex items-center justify-between gap-4 mb-4">
               <div>
-                <div className="text-lg font-semibold text-slate-800 dark:text-white">
-                  Renommer une matière
-                </div>
+                <div className="text-lg font-semibold text-slate-800 dark:text-white">Renommer une matière</div>
                 <div className="text-slate-600 dark:text-slate-300">
                   Liste basée sur les matières présentes dans les sessions (diagramme Analyses)
                 </div>
               </div>
             </div>
 
-            {sessionSubjects.length === 0 ? (
-              <div className="text-sm text-slate-600 dark:text-slate-300">
-                Aucune matière dans l’historique pour le moment.
-              </div>
+            {sessionSubjectsSortedByTime.length === 0 ? (
+              <div className="text-sm text-slate-600 dark:text-slate-300">Aucune matière dans l’historique pour le moment.</div>
             ) : (
               <div className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">
-                      Nom
-                    </label>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">Nom</label>
                     <select
                       className="input-field"
                       value={renameFrom}
@@ -609,18 +537,14 @@ const Settings = () => {
                         setRenameMsg('');
                       }}
                     >
-                      {sessionSubjects.map((s) => (
-                        <option key={s} value={s}>
-                          {s}
-                        </option>
+                      {sessionSubjectsSortedByTime.map((s) => (
+                        <option key={s} value={s}>{s}</option>
                       ))}
                     </select>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">
-                      Nouveau nom
-                    </label>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">Nouveau nom</label>
                     <input
                       className="input-field"
                       value={renameTo}
