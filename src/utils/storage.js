@@ -37,7 +37,10 @@ export const saveStudySession = (session) => {
     description: session?.description || '',
     duration: Number(session?.duration || 0),
     startTime: typeof session?.startTime === 'string' ? session.startTime : undefined,
-    isExam: !!session?.isExam
+    isExam: !!session?.isExam,
+
+    // ✅ persiste la couleur d’examen si fournie
+    examColor: typeof session?.examColor === 'string' ? session.examColor : undefined
   };
 
   safeSessions.push(cleanSession);

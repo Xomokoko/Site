@@ -3,8 +3,6 @@ import { ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
 import { addDays, isSameDay, startOfWeek } from 'date-fns';
 import useStudyData from '../hooks/useStudyData';
 import { formatDate, getWeekDays, FULL_DAYS } from '../utils/dateHelpers';
-import PlanningWizard from '../components/PlanningWizard';
-import { generatePlanning } from '../utils/planningGenerator';
 import ToggleSwitch from '../components/ToggleSwitch';
 
 const SETTINGS_KEY = 'etudes_settings';
@@ -45,14 +43,13 @@ const formatMinutesSmart = (minutes, timeUnitMode) => {
 const normalizeSubject = (v) => (typeof v === 'string' ? v.trim() : '');
 
 const Planning = () => {
-  const { sessions = [], addSession, deleteSession, addMultipleSessions } = useStudyData();
+  const { sessions = [], addSession, deleteSession } = useStudyData();
 
   const [currentWeekStart, setCurrentWeekStart] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedHour, setSelectedHour] = useState(null);
   const [newSession, setNewSession] = useState({ subject: '', duration: 60, startTime: '09:00', isExam: false });
-  const [showWizard, setShowWizard] = useState(false);
 
   const [timeUnitMode, setTimeUnitMode] = useState(loadTimeUnitMode);
   const [analyticsColorMap, setAnalyticsColorMap] = useState(loadAnalyticsColorMap);
@@ -114,12 +111,6 @@ const Planning = () => {
     }
   };
 
-  const handleGeneratePlanning = (formData) => {
-    const generatedSessions = generatePlanning(formData);
-    if (!generatedSessions || generatedSessions.length === 0) return;
-    addMultipleSessions(generatedSessions);
-  };
-
   const getSessionsForDay = (day) => {
     const daySessions = (sessions || [])
       .filter((s) => isSameDay(new Date(s.date), day))
@@ -133,9 +124,9 @@ const Planning = () => {
 
         if (sessionHour < 6 || sessionHour >= 24) return null;
 
-        return { 
-          ...session, 
-          top: Math.max(0, top), 
+        return {
+          ...session,
+          top: Math.max(0, top),
           height: Math.max(16, height),
           end: Math.max(0, top) + Math.max(16, height)
         };
@@ -147,9 +138,7 @@ const Planning = () => {
     const positioned = [];
     daySessions.forEach((session) => {
       let column = 0;
-      let overlapping = positioned.filter(
-        (p) => !(session.top >= p.end || session.end <= p.top)
-      );
+      let overlapping = positioned.filter((p) => !(session.top >= p.end || session.end <= p.top));
 
       if (overlapping.length > 0) {
         const usedColumns = overlapping.map((p) => p.column);
@@ -186,11 +175,6 @@ const Planning = () => {
           </h1>
         </div>
 
-        <div className="flex items-center justify-between mb-6">
-          <button onClick={() => setShowWizard(true)} className="btn-primary flex items-center gap-2">
-            Générer un planning
-          </button>
-        </div>
 
         <div className="card mb-8 animate-slide-up" style={{ animationDelay: '0.1s' }}>
           <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-200 dark:border-slate-700">
@@ -287,14 +271,20 @@ const Planning = () => {
                         }\nDurée: ${session.duration || 0} min`;
 
                         const baseClass = session.isExam
-                          ? 'bg-gradient-to-br from-red-500 to-rose-600 dark:from-red-600 dark:to-rose-700 border-l-4 border-red-700 dark:border-red-400'
+                          ? 'border-l-4'
                           : customColor
                           ? 'border-l-4'
                           : 'bg-gradient-to-br from-blue-500 to-indigo-600 dark:from-blue-600 dark:to-indigo-700 border-l-4 border-blue-700 dark:border-blue-400';
 
-                        const style = customColor
+                        const style = session.isExam
+                          ? { backgroundColor: '#ce0808', borderLeftColor: '#610303' }
+                          : customColor
                           ? { backgroundColor: customColor, borderLeftColor: customColor }
                           : undefined;
+
+                        const titleTextClass = session.isExam ? 'text-black' : 'text-white';
+                        const subTextClass = session.isExam ? 'text-black/80' : 'text-white/80';
+                        const deleteBtnClass = session.isExam ? 'text-black hover:bg-black/10' : 'text-white hover:bg-black/20';
 
                         return (
                           <div
@@ -309,14 +299,16 @@ const Planning = () => {
                             >
                               <div className="flex items-start justify-between gap-1 h-full">
                                 <div className="flex-1 min-w-0">
-                                  <div className="font-semibold text-xs text-white truncate">
+                                  <div className={`font-semibold text-xs truncate ${titleTextClass}`}>
                                     {normalizeSubject(session.subject) || 'Session'}
                                   </div>
+
                                   {session.height >= 32 && (
-                                    <div className="text-xs text-white/80 mt-0.5">{session.startTime}</div>
+                                    <div className={`text-xs mt-0.5 ${subTextClass}`}>{session.startTime}</div>
                                   )}
+
                                   {session.height >= 48 && (
-                                    <div className="text-xs text-white/80">
+                                    <div className={`text-xs ${subTextClass}`}>
                                       {formatMinutesSmart(session.duration, timeUnitMode)}
                                     </div>
                                   )}
@@ -327,7 +319,7 @@ const Planning = () => {
                                     e.stopPropagation();
                                     deleteSession(session.id);
                                   }}
-                                  className="opacity-0 group-hover:opacity-100 transition-all p-1 rounded hover:bg-black/20 text-white flex-shrink-0"
+                                  className={`opacity-0 group-hover:opacity-100 transition-all p-1 rounded flex-shrink-0 ${deleteBtnClass}`}
                                   title="Supprimer"
                                 >
                                   <Trash2 className="w-3 h-3" />
@@ -449,8 +441,6 @@ const Planning = () => {
             </div>
           </div>
         )}
-
-        {showWizard && <PlanningWizard onClose={() => setShowWizard(false)} onGenerate={handleGeneratePlanning} />}
       </div>
     </div>
   );
