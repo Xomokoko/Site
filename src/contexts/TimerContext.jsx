@@ -18,6 +18,8 @@ const SETTINGS_KEY = 'etudes_settings';
 const DEFAULT_SETTINGS = {
   askNextSessionPopup: true,
   focusMinutes: 25,
+  shortBreakMinutes: 5,
+  longBreakMinutes: 10,
   soundsEnabled: true,
   soundVolume: 0.5,
   soundWork: '/BRUH.mp3',
@@ -51,17 +53,19 @@ export const TimerProvider = ({ children }) => {
   const [timerMode, setTimerMode] = useState('pomodoro');
   const [customMinutes, setCustomMinutes] = useState(50);
   const [focusMinutes, setFocusMinutes] = useState(() => loadSettings().focusMinutes);
+  const [shortBreakMinutes, setShortBreakMinutes] = useState(() => loadSettings().shortBreakMinutes ?? 5);
+  const [longBreakMinutes, setLongBreakMinutes] = useState(() => loadSettings().longBreakMinutes ?? 10);
 
   const { openSubjectModal } = useModal();
 
   const modes = useMemo(
     () => ({
       pomodoro: { minutes: focusMinutes, label: 'Focus', color: 'bg-slate-900' },
-      shortBreak: { minutes: 5, label: 'Pause courte', color: 'bg-slate-900' },
-      longBreak: { minutes: 10, label: 'Pause longue', color: 'bg-slate-900' },
+      shortBreak: { minutes: shortBreakMinutes, label: 'Pause courte', color: 'bg-slate-900' },
+      longBreak: { minutes: longBreakMinutes, label: 'Pause longue', color: 'bg-slate-900' },
       custom: { minutes: customMinutes, label: 'Personnalisé', color: 'bg-slate-900' }
     }),
-    [focusMinutes, customMinutes]
+    [focusMinutes, shortBreakMinutes, longBreakMinutes, customMinutes]
   );
 
   const currentMode = modes[timerMode];
@@ -111,10 +115,20 @@ export const TimerProvider = ({ children }) => {
     const syncFromSettings = () => {
       const next = loadSettings();
       const nextFocus = Number(next.focusMinutes || 25);
+      const nextShort = Number(next.shortBreakMinutes || 5);
+      const nextLong = Number(next.longBreakMinutes || 10);
       setFocusMinutes(nextFocus);
+      setShortBreakMinutes(nextShort);
+      setLongBreakMinutes(nextLong);
 
       if (timerMode === 'pomodoro' && !timer.isRunning && !timer.isPaused) {
         timer.reset(nextFocus, false);
+      }
+      if (timerMode === 'shortBreak' && !timer.isRunning && !timer.isPaused) {
+        timer.reset(nextShort, false);
+      }
+      if (timerMode === 'longBreak' && !timer.isRunning && !timer.isPaused) {
+        timer.reset(nextLong, false);
       }
     };
 

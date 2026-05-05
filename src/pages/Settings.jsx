@@ -11,6 +11,8 @@ const ANALYTICS_COLORS_KEY = 'etudes_analytics_colors';
 const DEFAULT_SETTINGS = {
   askNextSessionPopup: true,
   focusMinutes: 25,
+  shortBreakMinutes: 5,
+  longBreakMinutes: 10,
   soundsEnabled: true,
   soundVolume: 0.5,
   soundWork: '/BRUH.mp3',
@@ -345,6 +347,76 @@ const Settings = () => {
             <div className="flex justify-between text-xs text-slate-500 dark:text-slate-300 mt-2">
               <span>5 min</span>
               <span>120 min</span>
+            </div>
+          </div>
+
+          <div className="card p-6">
+            <div className="flex items-center justify-between gap-4 mb-4">
+              <div>
+                <div className="text-lg font-semibold text-slate-800 dark:text-white">
+                  Durée de la Pause courte
+                </div>
+                <div className="text-slate-600 dark:text-slate-300">
+                  Change la durée du mode Pause courte
+                </div>
+              </div>
+
+              <div className="text-lg font-bold text-slate-800 dark:text-white">
+                {settings.shortBreakMinutes ?? 5} min
+              </div>
+            </div>
+
+            <input
+              type="range"
+              min={1}
+              max={30}
+              step={1}
+              value={settings.shortBreakMinutes ?? 5}
+              onChange={(e) => {
+                const next = saveSettings({ shortBreakMinutes: Number(e.target.value) });
+                setSettings(next);
+              }}
+              className="w-full"
+            />
+
+            <div className="flex justify-between text-xs text-slate-500 dark:text-slate-300 mt-2">
+              <span>1 min</span>
+              <span>30 min</span>
+            </div>
+          </div>
+
+          <div className="card p-6">
+            <div className="flex items-center justify-between gap-4 mb-4">
+              <div>
+                <div className="text-lg font-semibold text-slate-800 dark:text-white">
+                  Durée de la Pause longue
+                </div>
+                <div className="text-slate-600 dark:text-slate-300">
+                  Change la durée du mode Pause longue
+                </div>
+              </div>
+
+              <div className="text-lg font-bold text-slate-800 dark:text-white">
+                {settings.longBreakMinutes ?? 10} min
+              </div>
+            </div>
+
+            <input
+              type="range"
+              min={5}
+              max={60}
+              step={1}
+              value={settings.longBreakMinutes ?? 10}
+              onChange={(e) => {
+                const next = saveSettings({ longBreakMinutes: Number(e.target.value) });
+                setSettings(next);
+              }}
+              className="w-full"
+            />
+
+            <div className="flex justify-between text-xs text-slate-500 dark:text-slate-300 mt-2">
+              <span>5 min</span>
+              <span>60 min</span>
             </div>
           </div>
 
