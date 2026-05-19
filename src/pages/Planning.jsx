@@ -412,9 +412,12 @@ const Planning = () => {
                     onChange={(e) => setNewSession({ ...newSession, duration: e.target.value })}
                     className="input-field"
                   >
-                    <option value="15">15 minutes</option>
+                    <option value="5">05 minutes</option>
+                    <option value="10">10 minutes</option>
+                    <option value="25">25 minutes</option>
                     <option value="30">30 minutes</option>
                     <option value="45">45 minutes</option>
+                    <option value="50">50 minutes</option>
                     <option value="60">1 heure</option>
                     <option value="90">1h30</option>
                     <option value="120">2 heures</option>
